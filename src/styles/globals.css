@@ -1,0 +1,541 @@
+/* ============================================
+   GLOBAL STYLES - SIPP
+   ============================================ */
+
+/* Import Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+@layer base {
+  /* 1. Reset & Base */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  body {
+    font-family: var(--font-family-primary);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    background-color: var(--color-background);
+    line-height: var(--line-height-normal);
+    overflow-x: hidden;
+  }
+  
+  /* 2. Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    color: var(--color-text-primary);
+  }
+  
+  h1 {
+    font-size: var(--font-size-5xl);
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: var(--letter-spacing-tight);
+  }
+  
+  h2 {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--letter-spacing-tight);
+  }
+  
+  h3 {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  h4 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  h5 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  h6 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  p {
+    margin-bottom: var(--spacing-4);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+  }
+  
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+  
+  a:hover {
+    color: var(--color-primary-dark);
+  }
+  
+  /* 3. Selection */
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-text-white);
+  }
+  
+  ::-moz-selection {
+    background-color: var(--color-primary);
+    color: var(--color-text-white);
+  }
+  
+  /* 4. Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--color-background-light);
+    border-radius: var(--radius-full);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-primary-light);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary);
+  }
+  
+  /* Firefox Scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary-light) var(--color-background-light);
+  }
+  
+  /* 5. Focus Styles */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+  
+  /* 6. Images */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* 7. Lists */
+  ul, ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  /* 8. Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  
+  /* 9. Forms */
+  input,
+  textarea,
+  select,
+  button {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+  
+  /* 10. Code */
+  code,
+  pre {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    background-color: var(--color-background-light);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-1) var(--spacing-2);
+  }
+  
+  pre {
+    padding: var(--spacing-4);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+@layer utilities {
+  /* 1. Text Utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-accent {
+    background: linear-gradient(135deg, var(--color-accent-yellow) 0%, var(--color-accent-orange) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* 2. Background Utilities */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  }
+  
+  .bg-gradient-light {
+    background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-light) 100%);
+  }
+  
+  .bg-gradient-hero {
+    background: linear-gradient(135deg, #f5f9ff 0%, #e8f4f8 50%, #dceef5 100%);
+  }
+  
+  /* 3. Shadow Utilities */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+  
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  /* 4. Animation Utilities */
+  .animate-float {
+    animation: float var(--transition-slower) var(--transition-timing-smooth) infinite;
+  }
+  
+  .animate-float-delayed {
+    animation: float var(--transition-slower) var(--transition-timing-smooth) 1s infinite;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn var(--transition-slower) var(--transition-timing-smooth) forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp var(--transition-slower) var(--transition-timing-bounce) forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn var(--transition-slower) var(--transition-timing-bounce) forwards;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse var(--transition-slowest) var(--transition-timing-smooth) infinite;
+  }
+  
+  /* 5. Glass Effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-dark {
+    background: rgba(5, 63, 92, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* 6. Container Utilities */
+  .container-custom {
+    max-width: var(--container-2xl);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-4);
+    padding-right: var(--spacing-4);
+  }
+  
+  @media (min-width: 640px) {
+    .container-custom {
+      padding-left: var(--spacing-6);
+      padding-right: var(--spacing-6);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .container-custom {
+      padding-left: var(--spacing-8);
+      padding-right: var(--spacing-8);
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .container-custom {
+      padding-left: var(--spacing-12);
+      padding-right: var(--spacing-12);
+    }
+  }
+  
+  /* 7. Section Utilities */
+  .section-padding {
+    padding-top: var(--section-padding);
+    padding-bottom: var(--section-padding);
+  }
+  
+  .section-padding-sm {
+    padding-top: var(--section-padding-sm);
+    padding-bottom: var(--section-padding-sm);
+  }
+  
+  .section-padding-lg {
+    padding-top: var(--section-padding-lg);
+    padding-bottom: var(--section-padding-lg);
+  }
+  
+  /* 8. Truncate Utilities */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* 9. Border Utilities */
+  .border-gradient {
+    border-image: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark)) 1;
+  }
+  
+  /* 10. Grid Utilities */
+  .grid-auto-fit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--grid-gap);
+  }
+  
+  .grid-auto-fill {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--grid-gap);
+  }
+  
+  /* 11. Flex Utilities */
+  .flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  /* 12. Aspect Ratio */
+  .aspect-auto {
+    aspect-ratio: auto;
+  }
+  
+  .aspect-square {
+    aspect-ratio: 1 / 1;
+  }
+  
+  .aspect-video {
+    aspect-ratio: 16 / 9;
+  }
+  
+  /* 13. Transition Utilities */
+  .transition-all-smooth {
+    transition: all var(--transition-base) var(--transition-timing-smooth);
+  }
+  
+  .transition-all-bounce {
+    transition: all var(--transition-base) var(--transition-timing-bounce);
+  }
+}
+
+/* ============================================
+   KEYFRAMES
+   ============================================ */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(2deg);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes countUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================
+   RESPONSIVE TYPOGRAPHY
+   ============================================ */
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: var(--font-size-4xl);
+  }
+  h2 {
+    font-size: var(--font-size-3xl);
+  }
+  h3 {
+    font-size: var(--font-size-2xl);
+  }
+  h4 {
+    font-size: var(--font-size-xl);
+  }
+  h5 {
+    font-size: var(--font-size-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: var(--font-size-3xl);
+  }
+  h2 {
+    font-size: var(--font-size-2xl);
+  }
+  h3 {
+    font-size: var(--font-size-xl);
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+  
+  p, h2, h3 {
+    orphans: 3;
+    widows: 3;
+  }
+  
+  img {
+    page-break-inside: avoid;
+  }
+  
+  a, a:visited {
+    text-decoration: underline;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+}
