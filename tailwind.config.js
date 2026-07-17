@@ -13,13 +13,32 @@ export default {
           DEFAULT: '#429EBD',
           dark: '#053F5C',
         },
+
         accent: {
           yellow: '#F7AD19',
           orange: '#F27F0C',
         },
+
         background: {
           DEFAULT: '#FFFFFF',
           light: '#F8FAFC',
+        },
+
+        status: {
+          success: '#16A34A', // Green
+          error: '#DC2626',   // Red
+          warning: '#F59E0B',
+          info: '#3B82F6',
+        },
+
+        text: {
+          primary: '#053F5C',
+          secondary: '#64748B',
+          muted: '#94A3B8',
+        },
+
+        border: {
+          light: '#E2E8F0',
         },
       },
       

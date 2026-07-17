@@ -15,6 +15,7 @@ import StudentInternships from '../pages/Student/Internships';
 import StudentApplications from '../pages/Student/Applications';
 import StudentProfile from '../pages/Student/Profile';
 import ApplyNow from '../pages/Student/ApplyNow';
+import ViewApplication from '../pages/Student/ViewApplication';
 
 export const router = createBrowserRouter([
   {
@@ -37,7 +38,8 @@ export const router = createBrowserRouter([
       { path: 'internships', element: <StudentInternships /> },
       { path: 'applications', element: <StudentApplications /> },
       { path: 'profile', element: <StudentProfile /> },
-      { path: 'apply/:id', element: <ApplyNow /> }, // Dynamic route for apply
+      { path: 'apply/:id', element: <ApplyNow /> },
+      { path: 'application/:id', element: <ViewApplication /> },
     ],
   },
 ]);

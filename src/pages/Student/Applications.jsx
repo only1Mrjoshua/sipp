@@ -1,24 +1,39 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileCheck, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
 const StudentApplications = () => {
+  const navigate = useNavigate();
+
   const applications = [
-    { title: 'Frontend Developer', company: 'TechCorp Inc.', status: 'In Review', date: '2 days ago', color: 'bg-accent-yellow/10 text-accent-yellow' },
-    { title: 'Data Analyst', company: 'DataVision Ltd.', status: 'Interview', date: '5 days ago', color: 'bg-status-info/10 text-status-info' },
-    { title: 'UI/UX Designer', company: 'Creative Studios', status: 'Accepted', date: '1 week ago', color: 'bg-status-success/10 text-status-success' },
-    { title: 'Backend Developer', company: 'API Solutions', status: 'Rejected', date: '2 weeks ago', color: 'bg-status-error/10 text-status-error' },
+    { id: 1, title: 'Frontend Developer', company: 'TechCorp Inc.', status: 'In Review', date: '2 days ago' },
+    { id: 2, title: 'UI/UX Designer', company: 'Creative Studios', status: 'Accepted', date: '1 week ago' },
+    { id: 3, title: 'Backend Developer', company: 'API Solutions', status: 'Rejected', date: '2 weeks ago' },
   ];
 
   const getStatusIcon = (status) => {
     switch(status) {
       case 'Accepted': return <CheckCircle className="w-5 h-5 text-status-success" />;
       case 'Rejected': return <XCircle className="w-5 h-5 text-status-error" />;
-      case 'Interview': return <Clock className="w-5 h-5 text-status-info" />;
+      case 'In Review': return <Clock className="w-5 h-5 text-accent-yellow" />;
       default: return <FileCheck className="w-5 h-5 text-accent-yellow" />;
     }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Accepted': return 'bg-status-success/10 text-status-success';
+      case 'Rejected': return 'bg-status-error/10 text-status-error';
+      case 'In Review': return 'bg-accent-yellow/10 text-accent-yellow';
+      default: return 'bg-accent-yellow/10 text-accent-yellow';
+    }
+  };
+
+  const handleView = (id) => {
+    navigate(`/student/application/${id}`);
   };
 
   return (
@@ -33,8 +48,8 @@ const StudentApplications = () => {
         {[
           { label: 'Total', value: '12', color: 'text-primary' },
           { label: 'In Review', value: '4', color: 'text-accent-yellow' },
-          { label: 'Interview', value: '3', color: 'text-status-info' },
           { label: 'Accepted', value: '2', color: 'text-status-success' },
+          { label: 'Rejected', value: '3', color: 'text-status-error' },
         ].map((stat, index) => (
           <Card key={index} className="text-center">
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
@@ -65,10 +80,15 @@ const StudentApplications = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${app.color}`}>
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(app.status)}`}>
                     {app.status}
                   </span>
-                  <Button variant="ghost" size="sm" icon={<Eye className="w-4 h-4" />}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    icon={<Eye className="w-4 h-4" />}
+                    onClick={() => handleView(app.id)}
+                  >
                     View
                   </Button>
                 </div>
