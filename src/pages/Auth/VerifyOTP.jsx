@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Shield, Mail } from 'lucide-react';
 import Container from '../../components/common/Container';
@@ -8,6 +8,9 @@ import Button from '../../components/common/Button';
 
 const VerifyOTP = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const role = searchParams.get('role') || 'student'; // Default to student if no role specified
+  
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
 
@@ -54,8 +57,12 @@ const VerifyOTP = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Direct navigation to dashboard without any validation
-    navigate('/student');
+    // Navigate based on role
+    if (role === 'company') {
+      navigate('/company');
+    } else {
+      navigate('/student');
+    }
   };
 
   const handleResend = () => {
@@ -84,6 +91,9 @@ const VerifyOTP = () => {
                 <div className="flex items-center justify-center mt-2 text-sm text-text-secondary">
                   <Mail className="w-4 h-4 mr-1" />
                   <span>info@sipp.curriumx.online</span>
+                </div>
+                <div className="mt-2 text-xs text-text-muted">
+                  {role === 'company' ? 'Creating company account...' : 'Creating student account...'}
                 </div>
               </div>
 

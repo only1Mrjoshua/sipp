@@ -30,7 +30,6 @@ const ApplyNow = () => {
     about: 'TechCorp Inc. is a leading technology company specializing in innovative web solutions. We have a track record of mentoring young talents and helping them grow into successful professionals.',
     requirements: ['Proficiency in React.js', 'Strong JavaScript skills', 'Understanding of CSS and responsive design', 'Good communication skills'],
     benefits: ['Mentorship program', 'Remote work options', 'Flexible working hours', 'Potential for full-time offer'],
-    startDate: 'January 2025',
     deadline: 'December 15, 2024',
     spots: '3 spots available',
   };
@@ -155,10 +154,6 @@ const ApplyNow = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border-light">
-              <div>
-                <p className="text-xs text-text-muted">Start Date</p>
-                <p className="text-sm font-medium text-primary-dark">{internship.startDate}</p>
-              </div>
               <div>
                 <p className="text-xs text-text-muted">Application Deadline</p>
                 <p className="text-sm font-medium text-primary-dark">{internship.deadline}</p>

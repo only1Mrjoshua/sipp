@@ -3,8 +3,9 @@ import { createBrowserRouter } from 'react-router-dom';
 // Layouts
 import MainLayout from '../layouts/MainLayout';
 import StudentsLayout from '../layouts/StudentsLayout';
+import CompanyLayout from '../layouts/CompanyLayout';
 
-// Pages
+// Student Pages
 import Home from '../pages/Home/Home';
 import Login from '../pages/Auth/Login';
 import Register from '../pages/Auth/Register';
@@ -17,6 +18,15 @@ import StudentProfile from '../pages/Student/Profile';
 import StudentSettings from '../pages/Student/Settings';
 import ApplyNow from '../pages/Student/ApplyNow';
 import ViewApplication from '../pages/Student/ViewApplication';
+
+// Company Pages
+import CompanyApplications from '../pages/Company/Applications';
+import CompanyProfile from '../pages/Company/Profile';
+import CompanySettings from '../pages/Company/Settings';
+import CreateInternship from '../pages/Company/CreateInternship';
+import CompanyInternships from '../pages/Company/CompanyInternships';
+import ViewInternship from '../pages/Company/ViewInternship';
+import EditInternship from '../pages/Company/EditInternship';
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +52,20 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <StudentSettings /> },
       { path: 'apply/:id', element: <ApplyNow /> },
       { path: 'application/:id', element: <ViewApplication /> },
+    ],
+  },
+  {
+    path: '/company',
+    element: <CompanyLayout />,
+    children: [
+      { index: true, element: <CompanyInternships /> },
+      { path: 'internships', element: <CompanyInternships /> },
+      { path: 'internship/:id', element: <ViewInternship /> },
+      { path: 'internship/edit/:id', element: <EditInternship /> },
+      { path: 'applications', element: <CompanyApplications /> },
+      { path: 'profile', element: <CompanyProfile /> },
+      { path: 'settings', element: <CompanySettings /> },
+      { path: 'create-internship', element: <CreateInternship /> },
     ],
   },
 ]);

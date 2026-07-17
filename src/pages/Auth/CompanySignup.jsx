@@ -11,8 +11,8 @@ const CompanySignup = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Direct navigation to OTP page without any validation
-    navigate('/verify-otp');
+    // Direct navigation to OTP page with company param
+    navigate('/verify-otp?role=company');
   };
 
   return (
