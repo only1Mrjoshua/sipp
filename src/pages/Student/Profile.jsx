@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Mail,
   Phone,
-  School, Briefcase,
+  School, 
+  Briefcase,
   Settings,
   Edit2,
   Save,
@@ -83,21 +84,18 @@ const StudentProfile = () => {
 
   const handleSave = () => {
     setLoading(true);
-    // Simulate API call
     setTimeout(() => {
       setLoading(false);
       setIsEditing(false);
-      // Show success message or notification
     }, 1500);
   };
 
   const handleCancel = () => {
-    // Reset to original data (in real app, you'd fetch from API)
     setIsEditing(false);
   };
 
   return (
-    <div>
+    <div className="w-full overflow-x-hidden">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Profile</h1>
@@ -120,8 +118,8 @@ const StudentProfile = () => {
 
       {/* Profile Header */}
       <Card variant="bordered" padding="lg" className="mb-8">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-          <div className="relative">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-6 min-w-0">
+          <div className="relative flex-shrink-0">
             <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
               <span className="text-3xl font-bold text-primary-dark">
                 {profileData.firstName[0]}{profileData.lastName[0]}
@@ -133,69 +131,69 @@ const StudentProfile = () => {
               </button>
             )}
           </div>
-          <div className="flex-1 text-center md:text-left">
+          <div className="flex-1 min-w-0 text-center md:text-left">
             {isEditing ? (
-              <div className="flex flex-wrap gap-4">
-                <div className="flex-1 min-w-[140px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                <div className="min-w-0">
                   <label className="text-xs text-text-muted block">First Name</label>
                   <input
                     type="text"
                     name="firstName"
                     value={profileData.firstName}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full min-w-0 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
-                <div className="flex-1 min-w-[140px]">
+                <div className="min-w-0">
                   <label className="text-xs text-text-muted block">Last Name</label>
                   <input
                     type="text"
                     name="lastName"
                     value={profileData.lastName}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full min-w-0 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
             ) : (
-              <h2 className="text-2xl font-bold text-primary-dark">
+              <h2 className="text-2xl font-bold text-primary-dark truncate">
                 {profileData.firstName} {profileData.lastName}
               </h2>
             )}
             <p className="text-text-secondary">Computer Science Student</p>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3 text-sm">
+            <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-3 mt-3 text-sm w-full">
               {isEditing ? (
                 <>
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-text-muted" />
+                  <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+                    <Mail className="w-4 h-4 shrink-0 text-text-muted" />
                     <input
                       type="email"
                       name="email"
                       value={profileData.email}
                       onChange={handleChange}
-                      className="px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      className="flex-1 min-w-0 w-full px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-text-muted" />
+                  <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+                    <Phone className="w-4 h-4 shrink-0 text-text-muted" />
                     <input
                       type="tel"
                       name="phone"
                       value={profileData.phone}
                       onChange={handleChange}
-                      className="px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      className="flex-1 min-w-0 w-full px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                     />
                   </div>
                 </>
               ) : (
                 <>
-                  <span className="flex items-center text-text-secondary">
-                    <Mail className="w-4 h-4 mr-1" />
-                    {profileData.email}
+                  <span className="flex items-center text-text-secondary truncate">
+                    <Mail className="w-4 h-4 mr-1 shrink-0" />
+                    <span className="truncate">{profileData.email}</span>
                   </span>
-                  <span className="flex items-center text-text-secondary">
-                    <Phone className="w-4 h-4 mr-1" />
-                    {profileData.phone}
+                  <span className="flex items-center text-text-secondary truncate">
+                    <Phone className="w-4 h-4 mr-1 shrink-0" />
+                    <span className="truncate">{profileData.phone}</span>
                   </span>
                 </>
               )}
@@ -207,6 +205,7 @@ const StudentProfile = () => {
               size="sm" 
               icon={<Edit2 className="w-4 h-4" />}
               onClick={handleEditToggle}
+              className="flex-shrink-0"
             >
               Edit Profile
             </Button>
@@ -219,7 +218,7 @@ const StudentProfile = () => {
         {/* Academic Information */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <School className="w-5 h-5 mr-2 text-primary" />
+            <School className="w-5 h-5 mr-2 text-primary shrink-0" />
             Academic Information
           </h3>
           <div className="space-y-3">
@@ -234,7 +233,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.university}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.university}</p>
               )}
             </div>
             <div>
@@ -248,7 +247,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.faculty}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.faculty}</p>
               )}
             </div>
             <div>
@@ -262,7 +261,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.department}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.department}</p>
               )}
             </div>
             <div>
@@ -290,7 +289,7 @@ const StudentProfile = () => {
         {/* Skills & Interests */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Briefcase className="w-5 h-5 mr-2 text-primary" />
+            <Briefcase className="w-5 h-5 mr-2 text-primary shrink-0" />
             Skills & Interests
           </h3>
           <div className="space-y-4">
@@ -298,12 +297,12 @@ const StudentProfile = () => {
               <p className="text-sm text-text-muted">Skills</p>
               <div className="flex flex-wrap gap-2 mt-1">
                 {profileData.skills.map((skill, i) => (
-                  <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full flex items-center gap-1">
+                  <span key={i} className="max-w-full break-words px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full flex items-center gap-1">
                     {skill}
                     {isEditing && (
                       <button
                         onClick={() => handleRemoveSkill(skill)}
-                        className="ml-1 hover:text-status-error transition-colors"
+                        className="ml-1 hover:text-status-error transition-colors shrink-0"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -312,16 +311,21 @@ const StudentProfile = () => {
                 ))}
               </div>
               {isEditing && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
                   <input
                     type="text"
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
                     placeholder="Add skill..."
-                    className="flex-1 px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    className="w-full sm:flex-1 min-w-0 px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
                   />
-                  <Button size="sm" variant="outline" onClick={handleAddSkill}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleAddSkill}
+                    className="sm:w-auto w-full shrink-0"
+                  >
                     Add
                   </Button>
                 </div>
@@ -331,12 +335,12 @@ const StudentProfile = () => {
               <p className="text-sm text-text-muted">Interests</p>
               <div className="flex flex-wrap gap-2 mt-1">
                 {profileData.interests.map((interest, i) => (
-                  <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
+                  <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
                     {interest}
                     {isEditing && (
                       <button
                         onClick={() => handleRemoveInterest(interest)}
-                        className="ml-1 hover:text-status-error transition-colors"
+                        className="ml-1 hover:text-status-error transition-colors shrink-0"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -345,16 +349,21 @@ const StudentProfile = () => {
                 ))}
               </div>
               {isEditing && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
                   <input
                     type="text"
                     value={newInterest}
                     onChange={(e) => setNewInterest(e.target.value)}
                     placeholder="Add interest..."
-                    className="flex-1 px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    className="w-full sm:flex-1 min-w-0 px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddInterest()}
                   />
-                  <Button size="sm" variant="outline" onClick={handleAddInterest}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleAddInterest}
+                    className="sm:w-auto w-full shrink-0"
+                  >
                     Add
                   </Button>
                 </div>
@@ -371,7 +380,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.careerAspiration}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.careerAspiration}</p>
               )}
             </div>
           </div>
@@ -380,10 +389,11 @@ const StudentProfile = () => {
 
       {/* Save/Cancel Buttons - Only visible in edit mode at the bottom */}
       {isEditing && (
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
           <Button 
             variant="outline" 
             onClick={handleCancel}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -392,6 +402,7 @@ const StudentProfile = () => {
             icon={<Save className="w-4 h-4" />}
             onClick={handleSave}
             loading={loading}
+            className="w-full sm:w-auto"
           >
             Save Changes
           </Button>
