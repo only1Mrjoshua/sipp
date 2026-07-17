@@ -26,6 +26,7 @@ const StudentProfile = () => {
     university: 'University of Lagos',
     faculty: 'Faculty of Science',
     department: 'Computer Science',
+    matricNumber: 'UNILAG/CS/2024/001',
     level: '400L',
     skills: ['React', 'JavaScript', 'CSS', 'Python', 'SQL', 'UI/UX'],
     interests: ['Web Development', 'Data Science', 'AI/ML', 'Cloud Computing'],
@@ -264,6 +265,20 @@ const StudentProfile = () => {
                 />
               ) : (
                 <p className="text-text-secondary font-medium break-words">{profileData.department}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-text-muted">Matric Number</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="matricNumber"
+                  value={profileData.matricNumber}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                />
+              ) : (
+                <p className="text-text-secondary font-medium break-words">{profileData.matricNumber}</p>
               )}
             </div>
             <div>

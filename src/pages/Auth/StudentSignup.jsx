@@ -122,6 +122,18 @@ const StudentSignup = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
+                        Matric Number
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="****/CS/2024/001"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className="block text-sm font-medium text-primary-dark mb-1.5">
                         Level
                       </label>
                       <select
