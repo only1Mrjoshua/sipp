@@ -76,7 +76,7 @@ const Hero = () => {
               {/* Main Image */}
               <div className="bg-white rounded-2xl shadow-strong p-4 border border-border-light overflow-hidden">
                 <img 
-                  src="/hero.jpg" 
+                  src="/hero.webp"
                   alt="SIPP Dashboard Preview"
                   className="w-full h-auto rounded-xl"
                 />
