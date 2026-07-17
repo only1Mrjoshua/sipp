@@ -103,6 +103,7 @@ const StudentProfile = () => {
             {isEditing ? 'Edit your personal information' : 'Manage your personal information'}
           </p>
         </div>
+        {/* Save/Cancel Buttons at the top */}
         <div className="flex gap-3">
           <Button 
             variant={isEditing ? "primary" : "ghost"} 
@@ -110,6 +111,7 @@ const StudentProfile = () => {
             icon={isEditing ? <Save className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
             onClick={isEditing ? handleSave : handleSettingsClick}
             loading={loading}
+            className="whitespace-nowrap"
           >
             {isEditing ? 'Save Changes' : 'Settings'}
           </Button>

@@ -145,7 +145,7 @@ const CompanyProfile = () => {
   };
 
   return (
-    <div>
+    <div className="w-full overflow-x-hidden">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Company Profile</h1>
@@ -153,23 +153,25 @@ const CompanyProfile = () => {
             {isEditing ? 'Edit your company information' : 'Manage your company information'}
           </p>
         </div>
+        {/* Save/Cancel Buttons at the top */}
         <div className="flex gap-3">
-          <Button 
+        <Button 
             variant={isEditing ? "primary" : "ghost"} 
             size="sm" 
             icon={isEditing ? <Save className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
             onClick={isEditing ? handleSave : handleSettingsClick}
             loading={loading}
-          >
+            className="whitespace-nowrap"
+        >
             {isEditing ? 'Save Changes' : 'Settings'}
-          </Button>
+        </Button>
         </div>
       </div>
 
       {/* Company Header */}
       <Card variant="bordered" padding="lg" className="mb-8">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-          <div className="relative">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-6 min-w-0">
+          <div className="relative flex-shrink-0">
             <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
               <span className="text-3xl font-bold text-primary-dark">
                 {profileData.companyName.split(' ').map(n => n[0]).join('')}
@@ -181,52 +183,52 @@ const CompanyProfile = () => {
               </button>
             )}
           </div>
-          <div className="flex-1 text-center md:text-left">
+          <div className="flex-1 min-w-0 text-center md:text-left">
             {isEditing ? (
               <input
                 type="text"
                 name="companyName"
                 value={profileData.companyName}
                 onChange={handleChange}
-                className="text-2xl font-bold text-primary-dark w-full max-w-md px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full min-w-0 text-2xl font-bold text-primary-dark px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             ) : (
-              <h2 className="text-2xl font-bold text-primary-dark">{profileData.companyName}</h2>
+              <h2 className="text-2xl font-bold text-primary-dark truncate">{profileData.companyName}</h2>
             )}
-            <p className="text-text-secondary">{profileData.industry}</p>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3 text-sm">
+            <p className="text-text-secondary truncate">{profileData.industry}</p>
+            <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-3 mt-3 text-sm w-full">
               {isEditing ? (
                 <>
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-text-muted" />
+                  <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+                    <Mail className="w-4 h-4 shrink-0 text-text-muted" />
                     <input
                       type="email"
                       name="email"
                       value={profileData.email}
                       onChange={handleChange}
-                      className="px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      className="flex-1 min-w-0 w-full px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-text-muted" />
+                  <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+                    <Phone className="w-4 h-4 shrink-0 text-text-muted" />
                     <input
                       type="tel"
                       name="phone"
                       value={profileData.phone}
                       onChange={handleChange}
-                      className="px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      className="flex-1 min-w-0 w-full px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                     />
                   </div>
                 </>
               ) : (
                 <>
-                  <span className="flex items-center text-text-secondary">
-                    <Mail className="w-4 h-4 mr-1" />
-                    {profileData.email}
+                  <span className="flex items-center text-text-secondary truncate">
+                    <Mail className="w-4 h-4 mr-1 shrink-0" />
+                    <span className="truncate">{profileData.email}</span>
                   </span>
-                  <span className="flex items-center text-text-secondary">
-                    <Phone className="w-4 h-4 mr-1" />
-                    {profileData.phone}
+                  <span className="flex items-center text-text-secondary truncate">
+                    <Phone className="w-4 h-4 mr-1 shrink-0" />
+                    <span className="truncate">{profileData.phone}</span>
                   </span>
                 </>
               )}
@@ -238,6 +240,7 @@ const CompanyProfile = () => {
               size="sm" 
               icon={<Edit2 className="w-4 h-4" />}
               onClick={handleEditToggle}
+              className="flex-shrink-0"
             >
               Edit Profile
             </Button>
@@ -250,7 +253,7 @@ const CompanyProfile = () => {
         {/* Company Information */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Building2 className="w-5 h-5 mr-2 text-primary" />
+            <Building2 className="w-5 h-5 mr-2 text-primary shrink-0" />
             Company Information
           </h3>
           <div className="space-y-3">
@@ -265,7 +268,7 @@ const CompanyProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.industry}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.industry}</p>
               )}
             </div>
             <div>
@@ -279,7 +282,7 @@ const CompanyProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <a href={`https://${profileData.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-text-secondary font-medium">
+                <a href={`https://${profileData.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-text-secondary font-medium break-all">
                   {profileData.website}
                 </a>
               )}
@@ -299,7 +302,7 @@ const CompanyProfile = () => {
                   ))}
                 </select>
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.companySize} employees</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.companySize} employees</p>
               )}
             </div>
             <div>
@@ -333,8 +336,8 @@ const CompanyProfile = () => {
                 </div>
               ) : (
                 <>
-                  <p className="text-text-secondary font-medium">{profileData.city}, {profileData.state}</p>
-                  <p className="text-text-secondary text-sm">{profileData.address}</p>
+                  <p className="text-text-secondary font-medium break-words">{profileData.city}, {profileData.state}</p>
+                  <p className="text-text-secondary text-sm break-words">{profileData.address}</p>
                 </>
               )}
             </div>
@@ -344,7 +347,7 @@ const CompanyProfile = () => {
         {/* Company Description */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-primary" />
+            <FileText className="w-5 h-5 mr-2 text-primary shrink-0" />
             About Company
           </h3>
           <div>
@@ -359,7 +362,7 @@ const CompanyProfile = () => {
                 placeholder="Describe your company..."
               />
             ) : (
-              <p className="text-text-secondary text-sm leading-relaxed">
+              <p className="text-text-secondary text-sm leading-relaxed break-words">
                 {profileData.companyDescription}
               </p>
             )}
@@ -370,18 +373,18 @@ const CompanyProfile = () => {
       {/* Internship Categories */}
       <Card variant="bordered" padding="lg" className="mt-6">
         <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-          <Tag className="w-5 h-5 mr-2 text-primary" />
+          <Tag className="w-5 h-5 mr-2 text-primary shrink-0" />
           Internship Categories
         </h3>
         <div>
           <div className="flex flex-wrap gap-2 mb-3">
             {profileData.internshipCategories.map((category, i) => (
-              <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full flex items-center gap-1">
+              <span key={i} className="max-w-full break-words px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full flex items-center gap-1">
                 {category}
                 {isEditing && (
                   <button
                     onClick={() => handleRemoveCategory(category)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -390,16 +393,21 @@ const CompanyProfile = () => {
             ))}
           </div>
           {isEditing && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 placeholder="Add category (e.g. Software Engineering)"
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddCategory}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddCategory}
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -410,18 +418,18 @@ const CompanyProfile = () => {
       {/* Skills Required */}
       <Card variant="bordered" padding="lg" className="mt-6">
         <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-          <Briefcase className="w-5 h-5 mr-2 text-primary" />
+          <Briefcase className="w-5 h-5 mr-2 text-primary shrink-0" />
           Skills Required
         </h3>
         <div>
           <div className="flex flex-wrap gap-2 mb-3">
             {profileData.skillsRequired.map((skill, i) => (
-              <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
+              <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
                 {skill}
                 {isEditing && (
                   <button
                     onClick={() => handleRemoveSkill(skill)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -430,16 +438,21 @@ const CompanyProfile = () => {
             ))}
           </div>
           {isEditing && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 placeholder="Add skill (e.g. React)"
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddSkill}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddSkill}
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -450,18 +463,18 @@ const CompanyProfile = () => {
       {/* Skills to be Offered */}
       <Card variant="bordered" padding="lg" className="mt-6">
         <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-          <GraduationCap className="w-5 h-5 mr-2 text-primary" />
+          <GraduationCap className="w-5 h-5 mr-2 text-primary shrink-0" />
           Skills to be Offered
         </h3>
         <div>
           <div className="flex flex-wrap gap-2 mb-3">
             {profileData.skillsOffered.map((skill, i) => (
-              <span key={i} className="px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
+              <span key={i} className="max-w-full break-words px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
                 {skill}
                 {isEditing && (
                   <button
                     onClick={() => handleRemoveOfferedSkill(skill)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -470,16 +483,21 @@ const CompanyProfile = () => {
             ))}
           </div>
           {isEditing && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newOfferedSkill}
                 onChange={(e) => setNewOfferedSkill(e.target.value)}
                 placeholder="Add skill to offer (e.g. React)"
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddOfferedSkill()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddOfferedSkill}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddOfferedSkill}
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -491,18 +509,18 @@ const CompanyProfile = () => {
       {/* Benefits */}
       <Card variant="bordered" padding="lg" className="mt-6">
         <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-          <Award className="w-5 h-5 mr-2 text-primary" />
+          <Award className="w-5 h-5 mr-2 text-primary shrink-0" />
           Benefits Offered
         </h3>
         <div>
           <div className="flex flex-wrap gap-2 mb-3">
             {profileData.benefits.map((benefit, i) => (
-              <span key={i} className="px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
+              <span key={i} className="max-w-full break-words px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
                 {benefit}
                 {isEditing && (
                   <button
                     onClick={() => handleRemoveBenefit(benefit)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -511,16 +529,21 @@ const CompanyProfile = () => {
             ))}
           </div>
           {isEditing && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newBenefit}
                 onChange={(e) => setNewBenefit(e.target.value)}
                 placeholder="Add benefit (e.g. Remote)"
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddBenefit()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddBenefit}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddBenefit}
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -530,10 +553,11 @@ const CompanyProfile = () => {
 
       {/* Save/Cancel Buttons */}
       {isEditing && (
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
           <Button 
             variant="outline" 
             onClick={handleCancel}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -542,6 +566,7 @@ const CompanyProfile = () => {
             icon={<Save className="w-4 h-4" />}
             onClick={handleSave}
             loading={loading}
+            className="w-full sm:w-auto"
           >
             Save Changes
           </Button>
