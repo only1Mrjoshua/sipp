@@ -1,23 +1,12 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Building2, 
-  MapPin, 
-  Clock, 
-  Briefcase,
-  User,
-  Mail,
-  Phone,
-  School,
-  BookOpen,
-  CheckCircle,
-  Send,
-  Calendar,
-  Users,
-  Globe,
-  Award
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Building2,
+  MapPin,
+  Clock,
+  Briefcase, CheckCircle,
+  Send
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';

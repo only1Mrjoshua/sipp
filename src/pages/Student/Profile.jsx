@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  School, 
-  BookOpen, 
-  Briefcase,
+import {
+  Mail,
+  Phone,
+  School, Briefcase,
   Settings,
   Edit2,
   Save,

@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Lock, 
-  Trash2, 
-  Eye, 
-  EyeOff,
-  AlertTriangle,
-  CheckCircle,
-  X
+import {
+    ArrowLeft,
+    Lock,
+    Trash2,
+    Eye,
+    EyeOff,
+    AlertTriangle,
+    CheckCircle,
+    X
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
