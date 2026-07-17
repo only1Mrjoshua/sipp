@@ -95,18 +95,18 @@ const ApplyNow = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Internship Details */}
           <Card variant="bordered" padding="lg">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-primary-dark">{internship.title}</h1>
-                <p className="text-text-secondary flex items-center mt-1">
-                  <Building2 className="w-4 h-4 mr-1" />
-                  {internship.company}
-                </p>
-              </div>
-              <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full">
-                {internship.match} Match
-              </span>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-primary-dark">{internship.title}</h1>
+              <p className="text-text-secondary flex items-center mt-1">
+                <Building2 className="w-4 h-4 mr-1" />
+                {internship.company}
+              </p>
             </div>
+            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
+              {internship.match} Match
+            </span>
+          </div>
 
             <div className="flex flex-wrap gap-4 text-sm text-text-secondary mb-4">
               <span className="flex items-center">

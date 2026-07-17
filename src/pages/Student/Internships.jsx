@@ -63,26 +63,26 @@ const StudentInternships = () => {
             <Card variant="bordered" padding="lg" className="hover:shadow-card-hover transition-shadow">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-primary-dark">{internship.title}</h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-primary-dark truncate">{internship.title}</h3>
                       <p className="text-text-secondary flex items-center mt-1">
-                        <Building2 className="w-4 h-4 mr-1" />
-                        {internship.company}
+                        <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
+                        <span className="truncate">{internship.company}</span>
                       </p>
                     </div>
-                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full">
+                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap flex-shrink-0">
                       {internship.match} Match
                     </span>
                   </div>
                   
                   <div className="flex flex-wrap gap-4 mt-3 text-sm text-text-secondary">
                     <span className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-1" />
+                      <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
                       {internship.location}
                     </span>
                     <span className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
+                      <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
                       {internship.duration}
                     </span>
                     <span className="px-2 py-0.5 bg-background-light rounded-full">
@@ -104,6 +104,7 @@ const StudentInternships = () => {
                   size="sm" 
                   icon={<ArrowRight className="w-4 h-4" />}
                   onClick={() => handleApply(internship.id)}
+                  className="flex-shrink-0"
                 >
                   Apply Now
                 </Button>

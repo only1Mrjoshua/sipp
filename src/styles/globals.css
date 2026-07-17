@@ -27,6 +27,11 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+
+  html, body {
+  overflow-x: hidden;
+  width: 100%;
+  }
   
   body {
     font-family: var(--font-family-primary);

@@ -91,7 +91,7 @@ const ViewApplication = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-2xl font-bold text-primary-dark">{application.title}</h1>
-                  <Badge className={getStatusBadge(application.status).className}>
+                  <Badge className={`${getStatusBadge(application.status).className} whitespace-nowrap shrink-0`}>
                     <StatusIcon className="w-4 h-4 mr-1" />
                     {application.status}
                   </Badge>
@@ -116,9 +116,9 @@ const ViewApplication = () => {
                 </div>
               </div>
               <div className="flex flex-col items-end">
-                <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full">
-                  {application.match} Match
-                </span>
+              <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
+                {application.match} Match
+              </span>
               </div>
             </div>
           </Card>
