@@ -23,7 +23,8 @@ import {
   Award,
   FileText,
   Send,
-  Eye
+  Eye,
+  FileEdit
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -73,6 +74,7 @@ const ViewApplication = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [note, setNote] = useState('');
 
   const statusOptions = ['In Review', 'Accept', 'Reject'];
 
@@ -128,18 +130,43 @@ const ViewApplication = () => {
     }
   };
 
+  const getNotePlaceholder = (status) => {
+    switch(status) {
+      case 'Accept':
+        return 'Add a note (e.g. Start date, next steps, etc.)';
+      case 'Reject':
+        return 'Add a note explaining why the application was rejected';
+      default:
+        return 'Add a note (optional)';
+    }
+  };
+
+  const getNoteLabel = (status) => {
+    switch(status) {
+      case 'Accept':
+        return 'Acceptance Note (Optional)';
+      case 'Reject':
+        return 'Rejection Reason (Optional)';
+      default:
+        return 'Note (Optional)';
+    }
+  };
+
   const handleStatusChange = (newStatus) => {
     setSelectedStatus(newStatus);
+    setNote('');
     setShowStatusModal(true);
   };
 
   const confirmStatusChange = () => {
     setLoading(true);
-    // Simulate API call
+    // Simulate API call with note
     setTimeout(() => {
       setCurrentStatus(selectedStatus);
       setShowStatusModal(false);
       setLoading(false);
+      // Note would be sent to API here
+      console.log(`Status changed to: ${selectedStatus}`, `Note: ${note}`);
     }, 1000);
   };
 
@@ -309,7 +336,7 @@ const ViewApplication = () => {
         </div>
       </div>
 
-      {/* Status Change Confirmation Modal */}
+      {/* Status Change Confirmation Modal with Note */}
       {showStatusModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <motion.div
@@ -318,10 +345,45 @@ const ViewApplication = () => {
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-white rounded-2xl max-w-md w-full p-6 shadow-strong"
           >
-            <h3 className="text-lg font-bold text-primary-dark mb-2">{getModalTitle(selectedStatus)}</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                selectedStatus === 'Accept' ? 'bg-status-success/10' : 
+                selectedStatus === 'Reject' ? 'bg-status-error/10' : 
+                'bg-accent-yellow/10'
+              }`}>
+                {selectedStatus === 'Accept' ? <CheckCircle className="w-5 h-5 text-status-success" /> :
+                 selectedStatus === 'Reject' ? <XCircle className="w-5 h-5 text-status-error" /> :
+                 <ClockIcon className="w-5 h-5 text-accent-yellow" />}
+              </div>
+              <h3 className="text-lg font-bold text-primary-dark">{getModalTitle(selectedStatus)}</h3>
+            </div>
+
             <p className="text-text-secondary text-sm mb-4">
               {getModalMessage(selectedStatus)}
             </p>
+
+            {/* Note Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-primary-dark mb-1.5">
+                {getNoteLabel(selectedStatus)}
+              </label>
+              <div className="relative">
+                <FileEdit className="absolute left-3 top-3 w-4 h-4 text-text-muted" />
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={getNotePlaceholder(selectedStatus)}
+                  rows="3"
+                  className="w-full pl-9 pr-4 py-2 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+                />
+              </div>
+              <p className="text-xs text-text-muted mt-1">
+                {selectedStatus === 'Accept' ? 'Add any additional information for the student' :
+                 selectedStatus === 'Reject' ? 'Providing a reason helps the student improve' :
+                 'Optional note for your records'}
+              </p>
+            </div>
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -337,6 +399,8 @@ const ViewApplication = () => {
                 fullWidth
                 onClick={confirmStatusChange}
                 loading={loading}
+                className={selectedStatus === 'Accept' ? 'bg-status-success hover:bg-status-success/80' :
+                           selectedStatus === 'Reject' ? 'bg-status-error hover:bg-status-error/80' : ''}
               >
                 Confirm
               </Button>

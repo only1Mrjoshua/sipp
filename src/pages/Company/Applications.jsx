@@ -118,7 +118,7 @@ const CompanyApplications = () => {
         ].map((stat, index) => (
           <Card key={index} className="text-center">
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            <p className="text-sm text-text-secondary">{stat.label}</p>
+            <p className="text-sm text-text-secondary whitespace-nowrap">{stat.label}</p>
           </Card>
         ))}
       </div>
@@ -158,10 +158,10 @@ const CompanyApplications = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(app.status)}`}>
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full whitespace-nowrap ${getStatusColor(app.status)}`}>
                     {app.status}
                   </span>
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full">
+                  <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap">
                     {app.matchScore}
                   </span>
                   <Button 
@@ -169,6 +169,7 @@ const CompanyApplications = () => {
                     size="sm" 
                     icon={<Eye className="w-4 h-4" />}
                     onClick={() => handleReviewApplication(app)}
+                    className="whitespace-nowrap"
                   >
                     Review
                   </Button>
@@ -209,7 +210,7 @@ const CompanyApplications = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-primary-dark">{selectedApplication.student}</h3>
                   <p className="text-text-secondary">{selectedApplication.position}</p>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedApplication.status)}`}>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(selectedApplication.status)}`}>
                     {selectedApplication.status}
                   </span>
                 </div>
@@ -260,15 +261,15 @@ const CompanyApplications = () => {
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-border-light">
-                <Button variant="success" size="sm">
+                <Button variant="success" size="sm" className="whitespace-nowrap">
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Accept
                 </Button>
-                <Button variant="outline" size="sm" className="border-status-error text-status-error hover:bg-status-error/10">
+                <Button variant="outline" size="sm" className="border-status-error text-status-error hover:bg-status-error/10 whitespace-nowrap">
                   <XCircle className="w-4 h-4 mr-2" />
                   Reject
                 </Button>
-                <Button variant="ghost" size="sm" className="ml-auto">
+                <Button variant="ghost" size="sm" className="ml-auto whitespace-nowrap">
                   <Mail className="w-4 h-4 mr-2" />
                   Message
                 </Button>

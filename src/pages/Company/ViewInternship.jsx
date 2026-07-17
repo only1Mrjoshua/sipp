@@ -106,7 +106,7 @@ const ViewInternship = () => {
           className="flex items-center text-text-secondary hover:text-primary transition-colors group"
         >
           <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-          Back to Internships
+          Back 
         </button>
         <div className="flex gap-3">
           <Button 
@@ -248,7 +248,7 @@ const ViewInternship = () => {
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
             <Users className="w-5 h-5 mr-2 text-primary" />
-            Recent Applications
+            Applications
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full">

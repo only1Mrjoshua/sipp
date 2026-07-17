@@ -127,12 +127,13 @@ const CompanyInternships = () => {
           <p className="text-text-secondary">Manage all your internship postings</p>
         </div>
         <Button 
-          variant="primary" 
-          size="sm" 
-          icon={<PlusCircle className="w-4 h-4" />}
-          onClick={() => navigate('/company/create-internship')}
+        variant="primary" 
+        size="sm" 
+        icon={<PlusCircle className="w-4 h-4" />}
+        onClick={() => navigate('/company/create-internship')}
+        className="whitespace-nowrap"
         >
-          Create Internship
+        Create Internship
         </Button>
       </div>
 

@@ -144,7 +144,7 @@ const EditInternship = () => {
         className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
       >
         <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-        Back to Internship
+        Back
       </button>
 
       <div className="mb-8">
@@ -156,7 +156,7 @@ const EditInternship = () => {
         {/* Basic Information */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Briefcase className="w-5 h-5 mr-2 text-primary" />
+            <Briefcase className="w-5 h-5 mr-2 text-primary shrink-0" />
             Basic Information
           </h3>
           <div className="space-y-4">
@@ -180,7 +180,7 @@ const EditInternship = () => {
                   Location <span className="text-status-error">*</span>
                 </label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted shrink-0" />
                   <input
                     type="text"
                     name="location"
@@ -215,7 +215,7 @@ const EditInternship = () => {
                   Duration <span className="text-status-error">*</span>
                 </label>
                 <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted shrink-0" />
                   <select
                     name="duration"
                     value={formData.duration}
@@ -234,7 +234,7 @@ const EditInternship = () => {
                   Spots Available <span className="text-status-error">*</span>
                 </label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted shrink-0" />
                   <input
                     type="number"
                     name="spotsAvailable"
@@ -254,7 +254,7 @@ const EditInternship = () => {
         {/* About the Role & Company */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-primary" />
+            <FileText className="w-5 h-5 mr-2 text-primary shrink-0" />
             About the Role & Company
           </h3>
           <div className="space-y-4">
@@ -292,17 +292,17 @@ const EditInternship = () => {
         {/* Skills Required */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Tag className="w-5 h-5 mr-2 text-primary" />
+            <Tag className="w-5 h-5 mr-2 text-primary shrink-0" />
             Skills Required
           </h3>
           <div>
             <div className="flex flex-wrap gap-2 mb-3">
               {formData.skillsRequired.map((skill, i) => (
-                <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
+                <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
                   {skill}
                   <button
                     onClick={() => handleRemoveSkill(skill)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                     type="button"
                   >
                     <X className="w-3 h-3" />
@@ -310,16 +310,22 @@ const EditInternship = () => {
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 placeholder="Add skill..."
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddSkill} type="button">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleAddSkill} 
+                type="button"
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -329,17 +335,17 @@ const EditInternship = () => {
         {/* Skills to be Offered */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <GraduationCap className="w-5 h-5 mr-2 text-primary" />
+            <GraduationCap className="w-5 h-5 mr-2 text-primary shrink-0" />
             Skills to be Offered
           </h3>
           <div>
             <div className="flex flex-wrap gap-2 mb-3">
               {formData.skillsOffered.map((skill, i) => (
-                <span key={i} className="px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
+                <span key={i} className="max-w-full break-words px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
                   {skill}
                   <button
                     onClick={() => handleRemoveOfferedSkill(skill)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                     type="button"
                   >
                     <X className="w-3 h-3" />
@@ -347,16 +353,22 @@ const EditInternship = () => {
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newOfferedSkill}
                 onChange={(e) => setNewOfferedSkill(e.target.value)}
                 placeholder="Add skill to offer..."
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddOfferedSkill()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddOfferedSkill} type="button">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleAddOfferedSkill} 
+                type="button"
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -366,17 +378,17 @@ const EditInternship = () => {
         {/* Benefits */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Award className="w-5 h-5 mr-2 text-primary" />
+            <Award className="w-5 h-5 mr-2 text-primary shrink-0" />
             Benefits Offered
           </h3>
           <div>
             <div className="flex flex-wrap gap-2 mb-3">
               {formData.benefits.map((benefit, i) => (
-                <span key={i} className="px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
+                <span key={i} className="max-w-full break-words px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
                   {benefit}
                   <button
                     onClick={() => handleRemoveBenefit(benefit)}
-                    className="ml-1 hover:text-status-error transition-colors"
+                    className="ml-1 hover:text-status-error transition-colors shrink-0"
                     type="button"
                   >
                     <X className="w-3 h-3" />
@@ -384,16 +396,22 @@ const EditInternship = () => {
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={newBenefit}
                 onChange={(e) => setNewBenefit(e.target.value)}
                 placeholder="Add benefit..."
-                className="flex-1 px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 onKeyPress={(e) => e.key === 'Enter' && handleAddBenefit()}
               />
-              <Button size="sm" variant="outline" onClick={handleAddBenefit} type="button">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleAddBenefit} 
+                type="button"
+                className="sm:w-auto w-full shrink-0"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -403,7 +421,7 @@ const EditInternship = () => {
         {/* Application Deadline */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Calendar className="w-5 h-5 mr-2 text-primary" />
+            <Calendar className="w-5 h-5 mr-2 text-primary shrink-0" />
             Application Settings
           </h3>
           <div>
@@ -411,7 +429,7 @@ const EditInternship = () => {
               Application Deadline <span className="text-status-error">*</span>
             </label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted shrink-0" />
               <input
                 type="date"
                 name="applicationDeadline"
@@ -425,11 +443,12 @@ const EditInternship = () => {
         </Card>
 
         {/* Submit Buttons */}
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-col sm:flex-row gap-3 justify-end">
           <Button 
             variant="outline" 
             onClick={() => navigate(`/company/internship/${id}`)}
             type="button"
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -438,6 +457,7 @@ const EditInternship = () => {
             type="submit"
             loading={loading}
             icon={<Save className="w-4 h-4" />}
+            className="w-full sm:w-auto whitespace-nowrap"
           >
             Update Internship
           </Button>
