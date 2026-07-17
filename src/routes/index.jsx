@@ -14,6 +14,7 @@ import VerifyOTP from '../pages/Auth/VerifyOTP';
 import StudentInternships from '../pages/Student/Internships';
 import StudentApplications from '../pages/Student/Applications';
 import StudentProfile from '../pages/Student/Profile';
+import StudentSettings from '../pages/Student/Settings';
 import ApplyNow from '../pages/Student/ApplyNow';
 import ViewApplication from '../pages/Student/ViewApplication';
 
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: 'internships', element: <StudentInternships /> },
       { path: 'applications', element: <StudentApplications /> },
       { path: 'profile', element: <StudentProfile /> },
+      { path: 'settings', element: <StudentSettings /> },
       { path: 'apply/:id', element: <ApplyNow /> },
       { path: 'application/:id', element: <ViewApplication /> },
     ],
