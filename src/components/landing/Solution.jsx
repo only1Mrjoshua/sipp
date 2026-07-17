@@ -7,8 +7,6 @@ import {
   Briefcase, 
   GitBranch,
   Bell,
-  BarChart3,
-  Shield
 } from 'lucide-react';
 import Container from '../common/Container';
 import SectionTitle from '../common/SectionTitle';
@@ -22,7 +20,7 @@ const Solution = () => {
     {
       icon: CheckCircle2,
       title: 'Smart Matching',
-      description: 'AI-powered algorithms match students with internships based on skills and interests.',
+      description: 'Smart matching connects students with internships based on their skills and interests.',
       color: 'text-primary',
     },
     {
@@ -40,7 +38,7 @@ const Solution = () => {
     {
       icon: Briefcase,
       title: 'Centralized Listings',
-      description: 'All internship opportunities in one place, easily searchable and filterable.',
+      description: 'All internship opportunities in one place.',
       color: 'text-primary-dark',
     },
     {
@@ -55,18 +53,6 @@ const Solution = () => {
       description: 'Instant updates on new opportunities and application status changes.',
       color: 'text-status-info',
     },
-    {
-      icon: BarChart3,
-      title: 'Analytics & Reports',
-      description: 'Data-driven insights for students, companies, and administrators.',
-      color: 'text-accent-orange',
-    },
-    {
-      icon: Shield,
-      title: 'Better Management',
-      description: 'Simplified coordination between all stakeholders in the placement process.',
-      color: 'text-text-secondary',
-    },
   ];
 
   return (
@@ -79,7 +65,7 @@ const Solution = () => {
           align="center"
         />
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
           {solutions.map((solution, index) => (
             <Card
               key={index}
