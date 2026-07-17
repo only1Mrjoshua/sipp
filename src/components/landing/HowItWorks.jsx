@@ -39,7 +39,7 @@ const HowItWorks = () => {
     {
       icon: Search,
       title: 'System Recommends Internships',
-      description: 'AI-powered matching recommends the best opportunities for you.',
+      description: 'Find internship opportunities that match your skills and interests.',
       step: '4',
     },
     {

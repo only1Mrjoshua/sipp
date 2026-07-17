@@ -32,8 +32,8 @@ const CTA = () => {
           </h2>
           
           <p className="text-lg text-primary-light/80 max-w-2xl mx-auto mb-8">
-            Join thousands of students and companies already using SIPP to find the perfect internship match.
-            Create your account today and take the first step toward your dream internship.
+            Start your internship journey with SIPP. Create your account today and connect
+            with internship opportunities that match your skills, interests, and career goals.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center">
