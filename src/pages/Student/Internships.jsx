@@ -1,12 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Building2, Clock, ArrowRight } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
 const StudentInternships = () => {
+  const navigate = useNavigate();
+
   const internships = [
     {
+      id: 1,
       title: 'Frontend Developer Intern',
       company: 'TechCorp Inc.',
       location: 'Lagos, Nigeria',
@@ -16,6 +20,7 @@ const StudentInternships = () => {
       tags: ['React', 'JavaScript', 'CSS'],
     },
     {
+      id: 2,
       title: 'Data Analyst Intern',
       company: 'DataVision Ltd.',
       location: 'Abuja, Nigeria',
@@ -25,6 +30,7 @@ const StudentInternships = () => {
       tags: ['Python', 'SQL', 'Tableau'],
     },
     {
+      id: 3,
       title: 'UI/UX Design Intern',
       company: 'Creative Studios',
       location: 'Remote',
@@ -34,6 +40,10 @@ const StudentInternships = () => {
       tags: ['Figma', 'UI Design', 'UX Research'],
     },
   ];
+
+  const handleApply = (internshipId) => {
+    navigate(`/student/apply/${internshipId}`);
+  };
 
   return (
     <div>
@@ -90,7 +100,12 @@ const StudentInternships = () => {
                   </div>
                 </div>
 
-                <Button variant="primary" size="sm" icon={<ArrowRight className="w-4 h-4" />}>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  icon={<ArrowRight className="w-4 h-4" />}
+                  onClick={() => handleApply(internship.id)}
+                >
                   Apply Now
                 </Button>
               </div>

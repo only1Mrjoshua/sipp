@@ -14,6 +14,7 @@ import VerifyOTP from '../pages/Auth/VerifyOTP';
 import StudentInternships from '../pages/Student/Internships';
 import StudentApplications from '../pages/Student/Applications';
 import StudentProfile from '../pages/Student/Profile';
+import ApplyNow from '../pages/Student/ApplyNow';
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: 'internships', element: <StudentInternships /> },
       { path: 'applications', element: <StudentApplications /> },
       { path: 'profile', element: <StudentProfile /> },
+      { path: 'apply/:id', element: <ApplyNow /> }, // Dynamic route for apply
     ],
   },
 ]);
