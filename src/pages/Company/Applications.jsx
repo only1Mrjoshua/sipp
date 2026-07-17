@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   FileCheck, 
@@ -16,6 +17,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
 const CompanyApplications = () => {
+  const navigate = useNavigate();
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -27,7 +29,7 @@ const CompanyApplications = () => {
       university: 'University of Lagos',
       department: 'Computer Science',
       level: '400L',
-      status: 'Pending',
+      status: 'Rejected',
       date: '2 days ago',
       email: 'john.doe@university.edu',
       phone: '+234 800 000 0000',
@@ -59,7 +61,7 @@ const CompanyApplications = () => {
       university: 'Covenant University',
       department: 'Graphic Design',
       level: '400L',
-      status: 'Shortlisted',
+      status: 'Accepted',
       date: '1 week ago',
       email: 'michael.j@university.edu',
       phone: '+234 800 000 0002',
@@ -74,9 +76,7 @@ const CompanyApplications = () => {
     switch(status) {
       case 'Accepted': return 'bg-status-success/10 text-status-success';
       case 'Rejected': return 'bg-status-error/10 text-status-error';
-      case 'Shortlisted': return 'bg-status-info/10 text-status-info';
       case 'In Review': return 'bg-accent-yellow/10 text-accent-yellow';
-      case 'Pending': return 'bg-accent-yellow/10 text-accent-yellow';
       default: return 'bg-accent-yellow/10 text-accent-yellow';
     }
   };
@@ -85,22 +85,20 @@ const CompanyApplications = () => {
     switch(status) {
       case 'Accepted': return <CheckCircle className="w-5 h-5 text-status-success" />;
       case 'Rejected': return <XCircle className="w-5 h-5 text-status-error" />;
-      case 'Shortlisted': return <Clock className="w-5 h-5 text-status-info" />;
       case 'In Review': return <Clock className="w-5 h-5 text-accent-yellow" />;
-      case 'Pending': return <Clock className="w-5 h-5 text-accent-yellow" />;
       default: return <FileCheck className="w-5 h-5 text-accent-yellow" />;
     }
   };
 
-  const handleViewDetails = (app) => {
-    setSelectedApplication(app);
-    setShowDetails(true);
+  // Navigate to the full ViewApplication page
+  const handleReviewApplication = (app) => {
+    navigate(`/company/application/${app.id}`);
   };
 
   // Calculate stats
   const totalApplications = applications.length;
-  const inReview = applications.filter(app => app.status === 'In Review' || app.status === 'Pending').length;
-  const accepted = applications.filter(app => app.status === 'Accepted' || app.status === 'Shortlisted').length;
+  const inReview = applications.filter(app => app.status === 'In Review').length;
+  const accepted = applications.filter(app => app.status === 'Accepted').length;
   const rejected = applications.filter(app => app.status === 'Rejected').length;
 
   return (
@@ -170,9 +168,9 @@ const CompanyApplications = () => {
                     variant="ghost" 
                     size="sm" 
                     icon={<Eye className="w-4 h-4" />}
-                    onClick={() => handleViewDetails(app)}
+                    onClick={() => handleReviewApplication(app)}
                   >
-                    View
+                    Review
                   </Button>
                 </div>
               </div>
@@ -265,10 +263,6 @@ const CompanyApplications = () => {
                 <Button variant="success" size="sm">
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Accept
-                </Button>
-                <Button variant="outline" size="sm" className="border-status-info text-status-info hover:bg-status-info/10">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Shortlist
                 </Button>
                 <Button variant="outline" size="sm" className="border-status-error text-status-error hover:bg-status-error/10">
                   <XCircle className="w-4 h-4 mr-2" />

@@ -54,9 +54,9 @@ const ViewInternship = () => {
     aboutRole: 'We are looking for a passionate Frontend Developer Intern to join our dynamic team. You will work on exciting projects and learn from experienced developers. Responsibilities include building responsive web applications, collaborating with the design team, and participating in code reviews.',
     aboutCompany: 'TechCorp Inc. is a leading technology company specializing in innovative web solutions. We have a track record of mentoring young talents and helping them grow into successful professionals. Our culture is built on innovation, collaboration, and continuous learning.',
     applications: [
-      { name: 'John Doe', email: 'john.doe@university.edu', status: 'Pending', date: '2 days ago' },
-      { name: 'Jane Smith', email: 'jane.smith@university.edu', status: 'In Review', date: '3 days ago' },
-      { name: 'Michael Johnson', email: 'michael.j@university.edu', status: 'Shortlisted', date: '1 week ago' },
+      { id: 1, name: 'John Doe', email: 'john.doe@university.edu', status: 'In Review', date: '2 days ago' },
+      { id: 2, name: 'Jane Smith', email: 'jane.smith@university.edu', status: 'Accepted', date: '3 days ago' },
+      { id: 3, name: 'Michael Johnson', email: 'michael.j@university.edu', status: 'Rejected', date: '1 week ago' },
     ]
   };
 
@@ -75,7 +75,6 @@ const ViewInternship = () => {
     switch(status) {
       case 'Accepted': return 'bg-status-success/10 text-status-success';
       case 'Rejected': return 'bg-status-error/10 text-status-error';
-      case 'Shortlisted': return 'bg-status-info/10 text-status-info';
       case 'In Review': return 'bg-accent-yellow/10 text-accent-yellow';
       default: return 'bg-accent-yellow/10 text-accent-yellow';
     }
@@ -91,6 +90,11 @@ const ViewInternship = () => {
     // Delete logic here
     setShowDeleteModal(false);
     navigate('/company/internships');
+  };
+
+  // Navigate to full application view
+  const handleReviewApplication = (applicationId) => {
+    navigate(`/company/application/${applicationId}`);
   };
 
   return (
@@ -275,8 +279,13 @@ const ViewInternship = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{app.date}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" icon={<Eye className="w-4 h-4" />}>
-                        View
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        icon={<Eye className="w-4 h-4" />}
+                        onClick={() => handleReviewApplication(app.id)}
+                      >
+                        Review
                       </Button>
                     </td>
                   </motion.tr>

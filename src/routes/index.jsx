@@ -27,6 +27,7 @@ import CreateInternship from '../pages/Company/CreateInternship';
 import CompanyInternships from '../pages/Company/CompanyInternships';
 import ViewInternship from '../pages/Company/ViewInternship';
 import EditInternship from '../pages/Company/EditInternship';
+import CompanyViewApplication from '../pages/Company/ViewApplication';
 
 export const router = createBrowserRouter([
   {
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       { path: 'internship/:id', element: <ViewInternship /> },
       { path: 'internship/edit/:id', element: <EditInternship /> },
       { path: 'applications', element: <CompanyApplications /> },
+      { path: 'application/:id', element: <CompanyViewApplication /> },
       { path: 'profile', element: <CompanyProfile /> },
       { path: 'settings', element: <CompanySettings /> },
       { path: 'create-internship', element: <CreateInternship /> },
