@@ -135,8 +135,8 @@ const StudentApplications = () => {
         </Card>
       ) : (
         <>
-          {/* Stats Summary */}
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+          {/* Stats Summary - Fixed responsive grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
               { label: 'Total', value: totalApplications, color: 'text-primary' },
               { label: 'In Review', value: inReview, color: 'text-accent-yellow' },
