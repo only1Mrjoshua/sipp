@@ -91,12 +91,12 @@ class UserOut(BaseModel):
     state: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
+    profilePicture: Optional[str] = None  # Add this field
     isVerified: bool
     isActive: bool
     createdAt: datetime
     updatedAt: datetime
 
-    # Fix: Use model_config instead of Config class
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,

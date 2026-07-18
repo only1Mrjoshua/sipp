@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -7,92 +7,84 @@ import {
   CheckCircle, 
   XCircle, 
   Eye,
-  Download,
-  Mail,
-  Phone,
+  Loader,
+  AlertCircle,
+  Briefcase,
   Building2,
   Calendar
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const CompanyApplications = () => {
   const navigate = useNavigate();
-  const [selectedApplication, setSelectedApplication] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [applications, setApplications] = useState([]);
+  const [error, setError] = useState('');
 
-  const applications = [
-    {
-      id: 1,
-      student: 'John Doe',
-      position: 'Frontend Developer Intern',
-      university: 'University of Lagos',
-      department: 'Computer Science',
-      level: '400L',
-      status: 'Rejected',
-      date: '2 days ago',
-      email: 'john.doe@university.edu',
-      phone: '+234 800 000 0000',
-      skills: ['React', 'JavaScript', 'CSS', 'Python'],
-      coverLetter: 'I am very passionate about frontend development...',
-      matchScore: '95%',
-      resume: 'John_Doe_Resume.pdf',
-    },
-    {
-      id: 2,
-      student: 'Jane Smith',
-      position: 'Data Analyst Intern',
-      university: 'University of Ibadan',
-      department: 'Statistics',
-      level: '400L',
-      status: 'In Review',
-      date: '3 days ago',
-      email: 'jane.smith@university.edu',
-      phone: '+234 800 000 0001',
-      skills: ['Python', 'SQL', 'Tableau', 'Excel'],
-      coverLetter: 'I have strong analytical skills...',
-      matchScore: '88%',
-      resume: 'Jane_Smith_Resume.pdf',
-    },
-    {
-      id: 3,
-      student: 'Michael Johnson',
-      position: 'UI/UX Design Intern',
-      university: 'Covenant University',
-      department: 'Graphic Design',
-      level: '400L',
-      status: 'Accepted',
-      date: '1 week ago',
-      email: 'michael.j@university.edu',
-      phone: '+234 800 000 0002',
-      skills: ['Figma', 'UI Design', 'UX Research', 'Adobe XD'],
-      coverLetter: 'I specialize in creating user-centered designs...',
-      matchScore: '92%',
-      resume: 'Michael_J_Resume.pdf',
-    },
-  ];
+  useEffect(() => {
+    fetchApplications();
+  }, []);
+
+  const fetchApplications = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await api.get('/api/applications/company');
+      setApplications(response.data || []);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      setError(error.response?.data?.detail || 'Failed to load applications. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
+    if (!status) return '';  // No color for no status
+    
     switch(status) {
       case 'Accepted': return 'bg-status-success/10 text-status-success';
       case 'Rejected': return 'bg-status-error/10 text-status-error';
       case 'In Review': return 'bg-accent-yellow/10 text-accent-yellow';
-      default: return 'bg-accent-yellow/10 text-accent-yellow';
+      default: return 'bg-text-muted/10 text-text-muted';
     }
   };
 
   const getStatusIcon = (status) => {
+    if (!status) return <FileCheck className="w-5 h-5 text-text-muted" />;
+    
     switch(status) {
       case 'Accepted': return <CheckCircle className="w-5 h-5 text-status-success" />;
       case 'Rejected': return <XCircle className="w-5 h-5 text-status-error" />;
       case 'In Review': return <Clock className="w-5 h-5 text-accent-yellow" />;
-      default: return <FileCheck className="w-5 h-5 text-accent-yellow" />;
+      default: return <FileCheck className="w-5 h-5 text-text-muted" />;
     }
   };
 
-  // Navigate to the full ViewApplication page
-  const handleReviewApplication = (app) => {
-    navigate(`/company/application/${app.id}`);
+  const handleReviewApplication = async (app) => {
+    const appId = app._id || app.id;
+    
+    try {
+      // If status is null/empty, call review endpoint to set to "In Review"
+      if (!app.status) {
+        await api.put(`/api/applications/${appId}/review`);
+      }
+      
+      // Navigate to the review page
+      navigate(`/company/application/${appId}`);
+    } catch (error) {
+      console.error('Error starting review:', error);
+      alert(error.response?.data?.detail || 'Failed to start review');
+    }
   };
 
   // Calculate stats
@@ -101,182 +93,147 @@ const CompanyApplications = () => {
   const accepted = applications.filter(app => app.status === 'Accepted').length;
   const rejected = applications.filter(app => app.status === 'Rejected').length;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+          <p className="mt-4 text-text-secondary">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Applications</h1>
-        <p className="text-text-secondary">Review and manage student applications</p>
+        <p className="text-text-secondary">Review and manage applications for your internships</p>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Total Applications', value: totalApplications, color: 'text-primary' },
-          { label: 'In Review', value: inReview, color: 'text-accent-yellow' },
-          { label: 'Accepted', value: accepted, color: 'text-status-success' },
-          { label: 'Rejected', value: rejected, color: 'text-status-error' },
-        ].map((stat, index) => (
-          <Card key={index} className="text-center">
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            <p className="text-sm text-text-secondary whitespace-nowrap">{stat.label}</p>
-          </Card>
-        ))}
-      </div>
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </motion.div>
+      )}
 
-      {/* Applications List */}
-      <div className="space-y-4">
-        {applications.map((app, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
+      {applications.length === 0 ? (
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Briefcase className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-primary-dark mb-2">No Applications Yet</h2>
+          <p className="text-text-secondary mb-6">
+            You haven't received any applications for your internships yet. 
+            Students will be able to apply once they find your internships.
+          </p>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/company/internships')}
           >
-            <Card variant="bordered" padding="lg" className="hover:shadow-card-hover transition-shadow">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    {getStatusIcon(app.status)}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-primary-dark">{app.student}</h3>
-                    <p className="text-text-secondary">{app.position}</p>
-                    <div className="flex flex-wrap gap-3 mt-1 text-sm text-text-muted">
-                      <span className="flex items-center">
-                        <Building2 className="w-3 h-3 mr-1" />
-                        {app.university}
-                      </span>
-                      <span className="flex items-center">
-                        <FileCheck className="w-3 h-3 mr-1" />
-                        {app.department}
-                      </span>
-                      <span className="flex items-center">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {app.level}
-                      </span>
+            View Your Internships
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* Stats Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[
+              { label: 'Total', value: totalApplications, color: 'text-primary' },
+              { label: 'In Review', value: inReview, color: 'text-accent-yellow' },
+              { label: 'Accepted', value: accepted, color: 'text-status-success' },
+              { label: 'Rejected', value: rejected, color: 'text-status-error' },
+            ].map((stat, index) => (
+              <Card key={index} className="text-center">
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                <p className="text-sm text-text-secondary whitespace-nowrap">{stat.label}</p>
+              </Card>
+            ))}
+          </div>
+
+          {/* Applications List */}
+          <div className="space-y-4">
+            {applications.map((app, index) => {
+              const appId = app._id || app.id;
+              const studentName = app.studentName || app.student || 'Unknown Student';
+              const internshipTitle = app.internshipTitle || app.position || 'Unknown Position';
+              const university = app.studentUniversity || app.university || '';
+              const department = app.studentDepartment || app.department || '';
+              const level = app.studentLevel || app.level || '';
+              const matchScore = app.matchScore || 0;
+              const status = app.status || null;
+              
+              return (
+                <motion.div
+                  key={appId || index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card variant="bordered" padding="lg" className="hover:shadow-card-hover transition-shadow">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-start space-x-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                            {getStatusIcon(status)}
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-primary-dark">{studentName}</h3>
+                            <p className="text-text-secondary">{internshipTitle}</p>
+                            <div className="flex flex-wrap gap-3 mt-1 text-sm text-text-muted">
+                              {university && (
+                                <span className="flex items-center">
+                                  <Building2 className="w-3 h-3 mr-1" />
+                                  {university}
+                                </span>
+                              )}
+                              {department && (
+                                <span className="flex items-center">
+                                  <FileCheck className="w-3 h-3 mr-1" />
+                                  {department}
+                                </span>
+                              )}
+                              {level && (
+                                <span className="flex items-center">
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  {level}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        {status && (
+                          <span className={`px-3 py-1 text-sm font-medium rounded-full whitespace-nowrap ${getStatusColor(status)}`}>
+                            {status}
+                          </span>
+                        )}
+                        <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap">
+                          {matchScore}% Match
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          icon={<Eye className="w-4 h-4" />}
+                          onClick={() => handleReviewApplication(app)}
+                          className="whitespace-nowrap"
+                        >
+                          Review
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full whitespace-nowrap ${getStatusColor(app.status)}`}>
-                    {app.status}
-                  </span>
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap">
-                    {app.matchScore}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    icon={<Eye className="w-4 h-4" />}
-                    onClick={() => handleReviewApplication(app)}
-                    className="whitespace-nowrap"
-                  >
-                    Review
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Application Details Modal */}
-      {showDetails && selectedApplication && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-strong"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-primary-dark">Application Details</h2>
-              <button
-                onClick={() => setShowDetails(false)}
-                className="p-1 hover:bg-background-light rounded-lg transition-colors"
-              >
-                <XCircle className="w-5 h-5 text-text-muted" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Student Info */}
-              <div className="flex items-center gap-4 p-4 bg-background-light rounded-xl">
-                <div className="w-14 h-14 bg-primary-light rounded-full flex items-center justify-center">
-                  <span className="text-xl font-bold text-primary-dark">
-                    {selectedApplication.student.split(' ').map(n => n[0]).join('')}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-primary-dark">{selectedApplication.student}</h3>
-                  <p className="text-text-secondary">{selectedApplication.position}</p>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(selectedApplication.status)}`}>
-                    {selectedApplication.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="grid md:grid-cols-2 gap-3">
-                <div className="flex items-center text-text-secondary text-sm">
-                  <Mail className="w-4 h-4 mr-2 text-primary" />
-                  {selectedApplication.email}
-                </div>
-                <div className="flex items-center text-text-secondary text-sm">
-                  <Phone className="w-4 h-4 mr-2 text-primary" />
-                  {selectedApplication.phone}
-                </div>
-              </div>
-
-              {/* Skills */}
-              <div>
-                <p className="text-sm font-medium text-primary-dark mb-2">Skills</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedApplication.skills.map((skill, i) => (
-                    <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Cover Letter */}
-              <div>
-                <p className="text-sm font-medium text-primary-dark mb-2">Cover Letter</p>
-                <p className="text-text-secondary text-sm p-3 bg-background-light rounded-lg">
-                  {selectedApplication.coverLetter}
-                </p>
-              </div>
-
-              {/* Documents */}
-              <div>
-                <p className="text-sm font-medium text-primary-dark mb-2">Documents</p>
-                <div className="flex gap-3">
-                  <button className="flex items-center text-sm text-primary hover:underline p-2 border border-border-light rounded-lg">
-                    <Download className="w-4 h-4 mr-2" />
-                    {selectedApplication.resume}
-                  </button>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-border-light">
-                <Button variant="success" size="sm" className="whitespace-nowrap">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Accept
-                </Button>
-                <Button variant="outline" size="sm" className="border-status-error text-status-error hover:bg-status-error/10 whitespace-nowrap">
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Reject
-                </Button>
-                <Button variant="ghost" size="sm" className="ml-auto whitespace-nowrap">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Message
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

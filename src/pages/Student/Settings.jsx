@@ -9,11 +9,14 @@ import {
     EyeOff,
     AlertTriangle,
     CheckCircle,
-    X
+    X,
+    Loader
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const StudentSettings = () => {
   const navigate = useNavigate();
@@ -25,6 +28,7 @@ const StudentSettings = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -35,14 +39,32 @@ const StudentSettings = () => {
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData({ ...passwordData, [name]: value });
+    setPasswordError('');
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+    setPasswordError('');
+    
+    // Validation
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+    
     setPasswordLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setPasswordLoading(false);
+    
+    try {
+      await api.put('/api/students/settings/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      
       setPasswordSuccess(true);
       setPasswordData({
         currentPassword: '',
@@ -50,20 +72,35 @@ const StudentSettings = () => {
         confirmPassword: '',
       });
       setTimeout(() => setPasswordSuccess(false), 3000);
-    }, 1500);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setPasswordError(error.response?.data?.detail || 'Failed to change password. Please try again.');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     setDeleteLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setDeleteLoading(false);
+    
+    try {
+      await api.delete('/api/students/settings/delete-account');
+      
+      // Clear local storage
+      authService.logout();
+      
       setDeleteSuccess(true);
       setShowDeleteModal(false);
+      
+      // Redirect to landing page after 2 seconds
       setTimeout(() => {
         navigate('/');
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      setDeleteLoading(false);
+      alert(error.response?.data?.detail || 'Failed to delete account. Please try again.');
+    }
   };
 
   return (
@@ -94,6 +131,24 @@ const StudentSettings = () => {
               <p className="text-sm text-text-secondary mb-4">
                 Update your password to keep your account secure
               </p>
+
+              {passwordError && (
+                <div className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 p-3 bg-status-success/10 text-status-success text-sm rounded-xl border border-status-success/20 flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                  Password updated successfully!
+                </motion.div>
+              )}
 
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div>
@@ -167,17 +222,6 @@ const StudentSettings = () => {
                     </button>
                   </div>
                 </div>
-
-                {passwordSuccess && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center text-status-success bg-status-success/10 p-3 rounded-xl"
-                  >
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    <span className="text-sm">Password updated successfully!</span>
-                  </motion.div>
-                )}
 
                 <Button
                   type="submit"

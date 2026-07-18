@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  MapPin, Building2, Clock, ArrowRight, User, AlertCircle, 
-  Briefcase, Tag, GraduationCap 
-} from 'lucide-react';
+import { MapPin, Building2, Clock, ArrowRight, User, AlertCircle, Briefcase, Loader } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import api from '../../services/api';
@@ -33,12 +30,10 @@ const StudentInternships = () => {
   const checkProfileCompletion = async (userData) => {
     setLoading(true);
     try {
-      // Check profile completion status
       const response = await api.get(`/api/students/profile/completion/${userData.id}`);
       setProfileComplete(response.data.is_complete);
       setMissingFields(response.data.missing_fields);
       
-      // Check if student has skills and interests
       const profileResponse = await api.get(`/api/students/profile/${userData.id}`);
       const profile = profileResponse.data;
       
@@ -49,7 +44,6 @@ const StudentInternships = () => {
       setHasInterests(hasInterests);
       
       if (response.data.is_complete && hasSkills && hasInterests) {
-        // Fetch internships if profile is complete with skills and interests
         await fetchInternships();
       }
     } catch (error) {
@@ -61,27 +55,30 @@ const StudentInternships = () => {
 
   const fetchInternships = async () => {
     try {
-      // TODO: Replace with actual API endpoint when ready
-      // const response = await api.get('/api/internships/matched');
-      // setInternships(response.data);
-      
-      // For now, show empty state since no backend endpoint exists yet
-      setInternships([]);
+      const response = await api.get('/api/internships/student/matched');
+      setInternships(response.data || []);
     } catch (error) {
       console.error('Error fetching internships:', error);
       setInternships([]);
     }
   };
 
-  const handleApply = (internshipId) => {
-    navigate(`/student/apply/${internshipId}`);
+  const handleApply = (internship) => {
+    // Use the correct ID field - backend might use _id or id
+    const internshipId = internship._id || internship.id;
+    console.log('Navigating to apply with ID:', internshipId);
+    if (internshipId) {
+      navigate(`/student/apply/${internshipId}`);
+    } else {
+      console.error('No internship ID found:', internship);
+    }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
           <p className="mt-4 text-text-secondary">Loading...</p>
         </div>
       </div>
@@ -139,7 +136,7 @@ const StudentInternships = () => {
       <div className="max-w-2xl mx-auto py-12">
         <Card variant="bordered" padding="lg" className="text-center">
           <div className="w-20 h-20 bg-accent-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Tag className="w-10 h-10 text-accent-yellow" />
+            <AlertCircle className="w-10 h-10 text-accent-yellow" />
           </div>
           <h2 className="text-2xl font-bold text-primary-dark mb-3">
             Add Your Skills & Interests
@@ -214,77 +211,80 @@ const StudentInternships = () => {
     );
   }
 
-  // Show internships if available
+  // Show internships if available - Original design
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Internships</h1>
-        <p className="text-text-secondary">
-          Internships matched based on your skills and interests
-        </p>
+        <p className="text-text-secondary">Browse internship opportunities matched for you</p>
       </div>
 
-      {/* Internship Cards */}
+      {/* Internship Cards - Original Design */}
       <div className="space-y-4">
-        {internships.map((internship, index) => (
-          <motion.div
-            key={internship.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card variant="bordered" padding="lg" className="hover:shadow-card-hover transition-shadow">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-primary-dark truncate">{internship.title}</h3>
-                      <p className="text-text-secondary flex items-center mt-1">
-                        <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
-                        <span className="truncate">{internship.company}</span>
-                      </p>
-                    </div>
-                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap flex-shrink-0">
-                      {internship.match}% Match
-                    </span>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-4 mt-3 text-sm text-text-secondary">
-                    <span className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                      {internship.location}
-                    </span>
-                    <span className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
-                      {internship.duration}
-                    </span>
-                    <span className="px-2 py-0.5 bg-background-light rounded-full">
-                      {internship.type}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {internship.tags && internship.tags.map((tag, i) => (
-                      <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-xs rounded-full">
-                        {tag}
+        {internships.map((internship, index) => {
+          // Get the correct ID
+          const internshipId = internship._id || internship.id;
+          
+          return (
+            <motion.div
+              key={internshipId || index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card variant="bordered" padding="lg" className="hover:shadow-card-hover transition-shadow">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-primary-dark truncate">{internship.title}</h3>
+                        <p className="text-text-secondary flex items-center mt-1">
+                          <Building2 className="w-4 h-4 mr-1 flex-shrink-0" />
+                          <span className="truncate">{internship.companyName || 'Unknown Company'}</span>
+                        </p>
+                      </div>
+                      <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap flex-shrink-0">
+                        {internship.match || 0}% Match
                       </span>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 mt-3 text-sm text-text-secondary">
+                      <span className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {internship.location}
+                      </span>
+                      <span className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {internship.duration}
+                      </span>
+                      <span className="px-2 py-0.5 bg-background-light rounded-full">
+                        {internship.type}
+                      </span>
+                    </div>
 
-                <Button 
-                  variant="primary" 
-                  size="sm" 
-                  icon={<ArrowRight className="w-4 h-4" />}
-                  onClick={() => handleApply(internship.id)}
-                  className="flex-shrink-0"
-                >
-                  Apply Now
-                </Button>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {internship.skillsRequired && internship.skillsRequired.map((tag, i) => (
+                        <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-xs rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    icon={<ArrowRight className="w-4 h-4" />}
+                    onClick={() => handleApply(internship)}
+                    className="flex-shrink-0"
+                  >
+                    Apply Now
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

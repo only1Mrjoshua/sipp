@@ -3,14 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import Database
 from app.core.config import settings
-from app.routers import auth, students
+from app.routers import auth, students, companies, internships, applications
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     await Database.connect_db()
     yield
-    # Shutdown
     await Database.close_db()
 
 app = FastAPI(
@@ -20,7 +18,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Configuration
 allowed_origins = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -40,6 +37,9 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(students.router)
+app.include_router(companies.router)
+app.include_router(internships.router)
+app.include_router(applications.router)  # ADD THIS
 
 @app.get("/")
 async def root():

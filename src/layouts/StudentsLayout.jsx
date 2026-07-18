@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Briefcase, 
   FileCheck, 
@@ -11,10 +11,15 @@ import {
 } from 'lucide-react';
 import Container from '../components/common/Container';
 import logo from '../assets/images/logo.png';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 const StudentsLayout = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profilePicture, setProfilePicture] = useState(null);
   const location = useLocation();
   const sidebarRef = useRef(null);
 
@@ -23,6 +28,26 @@ const StudentsLayout = () => {
     { icon: FileCheck, label: 'Applications', path: '/student/applications' },
     { icon: User, label: 'Profile', path: '/student/profile' },
   ];
+
+  // Get user data on mount
+  useEffect(() => {
+    const userData = authService.getCurrentUser();
+    setUser(userData);
+    if (userData) {
+      fetchProfilePicture(userData.id);
+    }
+  }, []);
+
+  const fetchProfilePicture = async (userId) => {
+    try {
+      const response = await api.get(`/api/students/profile/${userId}`);
+      if (response.data.profilePicture) {
+        setProfilePicture(response.data.profilePicture);
+      }
+    } catch (error) {
+      console.error('Error fetching profile picture:', error);
+    }
+  };
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -61,6 +86,24 @@ const StudentsLayout = () => {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return '?';
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`;
+    }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    return '?';
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/login');
   };
 
   return (
@@ -167,6 +210,7 @@ const StudentsLayout = () => {
           {/* Logout */}
           <div className="border-t border-border-light p-4 flex-shrink-0">
             <button
+              onClick={handleLogout}
               className="flex w-full items-center rounded-xl px-4 py-3 text-status-error hover:bg-status-error/10 transition-colors"
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -200,17 +244,25 @@ const StudentsLayout = () => {
                 <Menu className="w-6 h-6 text-primary-dark" />
               </button>
 
-            <div className="ml-auto">
-              <Link
-                to="/student/profile"
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-light hover:bg-primary transition-colors duration-200 group"
-                title="Profile"
-              >
-                <span className="text-sm font-bold text-primary-dark group-hover:text-white">
-                  SJ
-                </span>
-              </Link>
-            </div>
+              <div className="ml-auto">
+                <Link
+                  to="/student/profile"
+                  className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-light hover:bg-primary transition-colors duration-200 group overflow-hidden"
+                  title="Profile"
+                >
+                  {profilePicture ? (
+                    <img 
+                      src={profilePicture} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-bold text-primary-dark group-hover:text-white">
+                      {getUserInitials()}
+                    </span>
+                  )}
+                </Link>
+              </div>
             </div>
           </Container>
         </header>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -24,62 +24,94 @@ import {
   FileText,
   Send,
   Eye,
-  FileEdit
+  FileEdit,
+  Loader,
+  AlertCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const ViewApplication = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-
-  // Mock data - would come from API based on application id
-  const application = {
-    id: id,
-    internshipTitle: 'Frontend Developer Intern',
-    internshipCompany: 'TechCorp Inc.',
-    location: 'Lagos, Nigeria',
-    type: 'Full-time',
-    duration: '6 months',
-    match: '95%',
-    status: 'In Review',
-    appliedDate: '2 days ago',
-    student: {
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john.doe@university.edu',
-      phone: '+234 800 000 0000',
-      university: 'University of Lagos',
-      faculty: 'Faculty of Science',
-      department: 'Computer Science',
-      level: '400L',
-      skills: ['React', 'JavaScript', 'CSS', 'Python', 'SQL'],
-      interests: ['Web Development', 'Data Science'],
-      careerAspiration: 'Full Stack Developer',
-    },
-    coverLetter: 'I am very passionate about frontend development and have been building web applications for the past two years. I have experience with React, JavaScript, and CSS, and I am eager to apply my skills in a professional environment. I am particularly excited about the opportunity to work at TechCorp Inc. because of your innovative approach to web solutions and your commitment to mentoring young talents. I believe this internship will be a perfect opportunity for me to grow as a developer and contribute meaningfully to your team.',
-    resume: 'John_Doe_Resume.pdf',
-    documents: ['John_Doe_Resume.pdf', 'John_Doe_CoverLetter.pdf'],
-    timeline: [
-      { date: 'Dec 10, 2024', event: 'Application Submitted', status: 'completed' },
-      { date: 'Dec 12, 2024', event: 'Application Reviewed', status: 'completed' },
-      { date: 'Dec 20, 2024', event: 'Final Decision', status: 'pending' },
-    ],
-  };
-
-  // Internal status values: 'In Review', 'Accept', 'Reject'
-  // Display statuses: 'In Review', 'Accepted', 'Rejected'
-  const [currentStatus, setCurrentStatus] = useState(application.status);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [application, setApplication] = useState(null);
+  const [internship, setInternship] = useState(null);
+  const [student, setStudent] = useState(null);
+  const [error, setError] = useState('');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [loading, setLoading] = useState(false);
   const [note, setNote] = useState('');
+
+  useEffect(() => {
+    fetchApplicationData();
+  }, [id]);
+
+  const fetchApplicationData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to view this application');
+        setLoading(false);
+        return;
+      }
+
+      // Get application details
+      const response = await api.get(`/api/applications/${id}`);
+      const appData = response.data;
+      setApplication(appData);
+
+      // Get internship details
+      if (appData.internshipId) {
+        try {
+          const internshipResponse = await api.get(`/api/internships/${appData.internshipId}`);
+          setInternship(internshipResponse.data);
+        } catch (err) {
+          console.error('Error fetching internship:', err);
+        }
+      }
+
+      // Get student details using the students endpoint
+      if (appData.studentId) {
+        try {
+          // Use the existing students/profile endpoint
+          const studentResponse = await api.get(`/api/students/profile/${appData.studentId}`);
+          setStudent(studentResponse.data);
+        } catch (err) {
+          console.error('Error fetching student:', err);
+          // Fallback: use student data from application
+          setStudent({
+            firstName: appData.studentName || 'Unknown',
+            lastName: '',
+            email: appData.studentEmail || 'Not provided',
+            phone: appData.studentPhone || 'Not provided',
+            university: appData.studentUniversity || '',
+            department: appData.studentDepartment || '',
+            level: appData.studentLevel || '',
+            skills: appData.studentSkills || [],
+            interests: appData.studentInterests || [],
+            careerAspiration: ''
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching application:', error);
+      setError(error.response?.data?.detail || 'Failed to load application details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const statusOptions = ['In Review', 'Accept', 'Reject'];
 
-  // Display text mapping for statuses
   const getDisplayStatus = (status) => {
+    if (!status) return '';
     switch(status) {
       case 'Accept': return 'Accepted';
       case 'Reject': return 'Rejected';
@@ -88,23 +120,24 @@ const ViewApplication = () => {
   };
 
   const getStatusColor = (status) => {
-    // Check against display values for the badge
+    if (!status) return 'bg-text-muted/10 text-text-muted';
     const displayStatus = getDisplayStatus(status);
     switch(displayStatus) {
       case 'Accepted': return 'bg-status-success/10 text-status-success';
       case 'Rejected': return 'bg-status-error/10 text-status-error';
       case 'In Review': return 'bg-accent-yellow/10 text-accent-yellow';
-      default: return 'bg-accent-yellow/10 text-accent-yellow';
+      default: return 'bg-text-muted/10 text-text-muted';
     }
   };
 
   const getStatusIcon = (status) => {
+    if (!status) return <ClockIcon className="w-5 h-5 text-text-muted" />;
     const displayStatus = getDisplayStatus(status);
     switch(displayStatus) {
       case 'Accepted': return <CheckCircle className="w-5 h-5 text-status-success" />;
       case 'Rejected': return <XCircle className="w-5 h-5 text-status-error" />;
       case 'In Review': return <ClockIcon className="w-5 h-5 text-accent-yellow" />;
-      default: return <ClockIcon className="w-5 h-5 text-accent-yellow" />;
+      default: return <ClockIcon className="w-5 h-5 text-text-muted" />;
     }
   };
 
@@ -158,17 +191,132 @@ const ViewApplication = () => {
     setShowStatusModal(true);
   };
 
-  const confirmStatusChange = () => {
-    setLoading(true);
-    // Simulate API call with note
-    setTimeout(() => {
-      setCurrentStatus(selectedStatus);
+  const confirmStatusChange = async () => {
+    setUpdating(true);
+    try {
+      // Map status to what the backend expects
+      let backendStatus = selectedStatus;
+      if (selectedStatus === 'Accept') backendStatus = 'Accepted';
+      if (selectedStatus === 'Reject') backendStatus = 'Rejected';
+
+      await api.put(`/api/applications/${id}/status`, {
+        status: backendStatus,
+        note: note || ''
+      });
+      
+      // Update local state
+      setApplication(prev => ({
+        ...prev,
+        status: backendStatus,
+        note: note || prev.note
+      }));
+      
       setShowStatusModal(false);
-      setLoading(false);
-      // Note would be sent to API here
-      console.log(`Status changed to: ${selectedStatus}`, `Note: ${note}`);
-    }, 1000);
+      
+      // Refresh data
+      await fetchApplicationData();
+      
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert(error.response?.data?.detail || 'Failed to update application status');
+    } finally {
+      setUpdating(false);
+    }
   };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const handleDownloadResume = () => {
+    alert('Download functionality coming soon');
+  };
+
+  const handleMessageStudent = () => {
+    const phoneNumber = student?.phone || application?.studentPhone;
+    if (phoneNumber) {
+      const formattedNumber = phoneNumber.replace(/[^0-9+]/g, '');
+      window.location.href = `sms:${formattedNumber}`;
+    } else {
+      alert('No phone number available for this student');
+    }
+  };
+
+  const handleEmailStudent = () => {
+    const email = student?.email || application?.studentEmail;
+    if (email) {
+      window.location.href = `mailto:${email}`;
+    } else {
+      alert('No email available for this student');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container className="py-8 max-w-5xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="mt-4 text-text-secondary">Loading application details...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error || !application) {
+    return (
+      <Container className="py-8 max-w-5xl">
+        <button
+          onClick={() => navigate('/company/applications')}
+          className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+          Back to Applications
+        </button>
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Application</h2>
+          <p className="text-text-secondary">{error || 'Application not found'}</p>
+          <Button 
+            variant="primary" 
+            className="mt-4"
+            onClick={fetchApplicationData}
+          >
+            Try Again
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
+
+  // Get student name from student data or application
+  const studentName = student 
+    ? `${student.firstName || ''} ${student.lastName || ''}`.trim() 
+    : application.studentName || 'Unknown Student';
+
+  const studentEmail = student?.email || application.studentEmail || 'Not provided';
+  const studentPhone = student?.phone || application.studentPhone || 'Not provided';
+  const studentUniversity = student?.university || application.studentUniversity || '';
+  const studentFaculty = student?.faculty || '';
+  const studentDepartment = student?.department || application.studentDepartment || '';
+  const studentLevel = student?.level || application.studentLevel || '';
+  const studentSkills = student?.skills || application.studentSkills || [];
+  const studentInterests = student?.interests || application.studentInterests || [];
+  const studentCareerAspiration = student?.careerAspiration || '';
+
+  const internshipTitle = internship?.title || application.internshipTitle || 'Unknown Position';
+  const internshipLocation = internship?.location || 'Not specified';
+  const internshipDuration = internship?.duration || 'Not specified';
+  const internshipType = internship?.type || 'Full-time';
+
+  const currentStatus = application.status || null;
 
   return (
     <Container className="py-8 max-w-5xl">
@@ -186,14 +334,16 @@ const ViewApplication = () => {
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Application Details</h1>
           <p className="text-text-secondary">
-            Review application for <span className="font-medium text-primary-dark">{application.internshipTitle}</span>
+            Review application for <span className="font-medium text-primary-dark">{internshipTitle}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 text-sm font-medium rounded-full flex items-center ${getStatusColor(currentStatus)}`}>
-            {getStatusIcon(currentStatus)}
-            <span className="ml-1">{getDisplayStatus(currentStatus)}</span>
-          </span>
+          {currentStatus && (
+            <span className={`px-3 py-1 text-sm font-medium rounded-full flex items-center ${getStatusColor(currentStatus)}`}>
+              {getStatusIcon(currentStatus)}
+              <span className="ml-1">{getDisplayStatus(currentStatus)}</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -210,14 +360,14 @@ const ViewApplication = () => {
             <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border-light">
               <div className="w-16 h-16 bg-primary-light rounded-full flex items-center justify-center">
                 <span className="text-2xl font-bold text-primary-dark">
-                  {application.student.firstName[0]}{application.student.lastName[0]}
+                  {studentName.split(' ').map(n => n[0]).join('').toUpperCase() || 'S'}
                 </span>
               </div>
               <div>
                 <h4 className="text-xl font-bold text-primary-dark">
-                  {application.student.firstName} {application.student.lastName}
+                  {studentName}
                 </h4>
-                <p className="text-text-secondary">{application.student.careerAspiration}</p>
+                <p className="text-text-secondary">{studentCareerAspiration || 'Student'}</p>
               </div>
             </div>
 
@@ -226,74 +376,103 @@ const ViewApplication = () => {
                 <p className="text-sm text-text-muted">Email</p>
                 <p className="font-medium text-primary-dark flex items-center">
                   <Mail className="w-4 h-4 mr-2 text-primary" />
-                  {application.student.email}
+                  {studentEmail}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-text-muted">Phone</p>
                 <p className="font-medium text-primary-dark flex items-center">
                   <Phone className="w-4 h-4 mr-2 text-primary" />
-                  {application.student.phone}
+                  {studentPhone}
                 </p>
               </div>
-              <div>
-                <p className="text-sm text-text-muted">University</p>
-                <p className="font-medium text-primary-dark flex items-center">
-                  <School className="w-4 h-4 mr-2 text-primary" />
-                  {application.student.university}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-text-muted">Faculty</p>
-                <p className="font-medium text-primary-dark flex items-center">
-                  <BookOpen className="w-4 h-4 mr-2 text-primary" />
-                  {application.student.faculty}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-text-muted">Department</p>
-                <p className="font-medium text-primary-dark">{application.student.department}</p>
-              </div>
-              <div>
-                <p className="text-sm text-text-muted">Level</p>
-                <p className="font-medium text-primary-dark">{application.student.level}</p>
-              </div>
+              {studentUniversity && (
+                <div>
+                  <p className="text-sm text-text-muted">University</p>
+                  <p className="font-medium text-primary-dark flex items-center">
+                    <School className="w-4 h-4 mr-2 text-primary" />
+                    {studentUniversity}
+                  </p>
+                </div>
+              )}
+              {studentFaculty && (
+                <div>
+                  <p className="text-sm text-text-muted">Faculty</p>
+                  <p className="font-medium text-primary-dark flex items-center">
+                    <BookOpen className="w-4 h-4 mr-2 text-primary" />
+                    {studentFaculty}
+                  </p>
+                </div>
+              )}
+              {studentDepartment && (
+                <div>
+                  <p className="text-sm text-text-muted">Department</p>
+                  <p className="font-medium text-primary-dark">{studentDepartment}</p>
+                </div>
+              )}
+              {studentLevel && (
+                <div>
+                  <p className="text-sm text-text-muted">Level</p>
+                  <p className="font-medium text-primary-dark">{studentLevel}</p>
+                </div>
+              )}
             </div>
           </Card>
 
           {/* Skills & Interests */}
-          <Card variant="bordered" padding="lg">
-            <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-              <Tag className="w-5 h-5 mr-2 text-primary" />
-              Skills & Interests
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-text-muted mb-2">Skills</p>
-                <div className="flex flex-wrap gap-2">
-                  {application.student.skills.map((skill, i) => (
-                    <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+          {(studentSkills.length > 0 || studentInterests.length > 0 || studentCareerAspiration) && (
+            <Card variant="bordered" padding="lg">
+              <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
+                <Tag className="w-5 h-5 mr-2 text-primary" />
+                Skills & Interests
+              </h3>
+              <div className="space-y-4">
+                {studentSkills.length > 0 && (
+                  <div>
+                    <p className="text-sm text-text-muted mb-2">Skills</p>
+                    <div className="flex flex-wrap gap-2">
+                      {studentSkills.map((skill, i) => (
+                        <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {studentInterests.length > 0 && (
+                  <div>
+                    <p className="text-sm text-text-muted mb-2">Interests</p>
+                    <div className="flex flex-wrap gap-2">
+                      {studentInterests.map((interest, i) => (
+                        <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {studentCareerAspiration && (
+                  <div>
+                    <p className="text-sm text-text-muted">Career Aspiration</p>
+                    <p className="font-medium text-primary-dark">{studentCareerAspiration}</p>
+                  </div>
+                )}
               </div>
-              <div>
-                <p className="text-sm text-text-muted mb-2">Interests</p>
-                <div className="flex flex-wrap gap-2">
-                  {application.student.interests.map((interest, i) => (
-                    <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-text-muted">Career Aspiration</p>
-                <p className="font-medium text-primary-dark">{application.student.careerAspiration}</p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
+
+          {/* Cover Letter */}
+          {application.coverLetter && (
+            <Card variant="bordered" padding="lg">
+              <h3 className="text-lg font-semibold text-primary-dark mb-3 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-primary" />
+                Cover Letter
+              </h3>
+              <p className="text-text-secondary whitespace-pre-wrap leading-relaxed">
+                {application.coverLetter}
+              </p>
+            </Card>
+          )}
         </div>
 
         {/* Right Sidebar - Actions */}
@@ -304,18 +483,17 @@ const ViewApplication = () => {
             {/* Match Score */}
             <div className="mb-4 p-4 bg-primary/5 rounded-xl text-center">
               <p className="text-sm text-text-muted">Match Score</p>
-              <p className="text-3xl font-bold text-primary">{application.match}</p>
+              <p className="text-3xl font-bold text-primary">{application.matchScore || 0}%</p>
             </div>
 
-            {/* Status Update - With correct highlighting */}
+            {/* Status Update */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-primary-dark">Update Status</p>
               {statusOptions.map((status) => {
-                // Check if this status matches the current status (considering display mapping)
-                const isActive =
-                  (status === 'Accept' && currentStatus === 'Accept') ||
-                  (status === 'Reject' && currentStatus === 'Reject') ||
-                  currentStatus === status;
+                const isActive = 
+                  (status === 'Accept' && currentStatus === 'Accepted') ||
+                  (status === 'Reject' && currentStatus === 'Rejected') ||
+                  (status === 'In Review' && currentStatus === 'In Review');
 
                 return (
                   <button
@@ -326,11 +504,45 @@ const ViewApplication = () => {
                         ? `${getStatusColor(status)} font-medium`
                         : 'text-text-secondary hover:bg-background-light'
                     }`}
+                    disabled={isActive}
                   >
                     {status}
+                    {isActive && (
+                      <span className="ml-2 text-xs">(Current)</span>
+                    )}
                   </button>
                 );
               })}
+            </div>
+
+            {/* Divider */}
+            <div className="my-4 border-t border-border-light"></div>
+
+            {/* Contact Actions */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-primary-dark">Contact Student</p>
+              {studentEmail && studentEmail !== 'Not provided' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  onClick={handleEmailStudent}
+                  icon={<MailIcon className="w-4 h-4" />}
+                >
+                  Send Email
+                </Button>
+              )}
+              {studentPhone && studentPhone !== 'Not provided' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  onClick={handleMessageStudent}
+                  icon={<MessageCircle className="w-4 h-4" />}
+                >
+                  Message Student
+                </Button>
+              )}
             </div>
           </Card>
         </div>
@@ -390,6 +602,7 @@ const ViewApplication = () => {
                 size="sm"
                 fullWidth
                 onClick={() => setShowStatusModal(false)}
+                disabled={updating}
               >
                 Cancel
               </Button>
@@ -398,7 +611,7 @@ const ViewApplication = () => {
                 size="sm"
                 fullWidth
                 onClick={confirmStatusChange}
-                loading={loading}
+                loading={updating}
                 className={selectedStatus === 'Accept' ? 'bg-status-success hover:bg-status-success/80' :
                            selectedStatus === 'Reject' ? 'bg-status-error hover:bg-status-error/80' : ''}
               >

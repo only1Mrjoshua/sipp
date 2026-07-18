@@ -1,66 +1,157 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Building2,
   MapPin,
   Clock,
-  Briefcase, CheckCircle,
-  Send
+  Briefcase, 
+  CheckCircle,
+  Send,
+  Loader,
+  AlertCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const ApplyNow = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [error, setError] = useState('');
+  const [internship, setInternship] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [matchScore, setMatchScore] = useState(0);
 
-  // Internship details (would come from API)
-  const internship = {
-    title: 'Frontend Developer Intern',
-    company: 'TechCorp Inc.',
-    location: 'Lagos, Nigeria',
-    type: 'Full-time',
-    duration: '6 months',
-    match: '95%',
-    tags: ['React', 'JavaScript', 'CSS', 'Tailwind'],
-    description: 'We are looking for a passionate Frontend Developer Intern to join our dynamic team. You will work on exciting projects and learn from experienced developers.',
-    about: 'TechCorp Inc. is a leading technology company specializing in innovative web solutions. We have a track record of mentoring young talents and helping them grow into successful professionals.',
-    requirements: ['Proficiency in React.js', 'Strong JavaScript skills', 'Understanding of CSS and responsive design', 'Good communication skills'],
-    benefits: ['Mentorship program', 'Remote work options', 'Flexible working hours', 'Potential for full-time offer'],
-    deadline: 'December 15, 2024',
-    spots: '3 spots available',
+  useEffect(() => {
+    console.log('ApplyNow mounted with ID from params:', id);
+    
+    if (!id) {
+      setError('No internship specified. Please go back and try again.');
+      setLoading(false);
+      return;
+    }
+    
+    fetchData();
+  }, [id]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to apply');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Fetching internship with ID:', id);
+      const internshipResponse = await api.get(`/api/internships/${id}`);
+      console.log('Internship data received:', internshipResponse.data);
+      setInternship(internshipResponse.data);
+
+      // Fetch student profile
+      const profileResponse = await api.get(`/api/students/profile/${userData.id}`);
+      setStudentProfile(profileResponse.data);
+
+      // Calculate match score
+      const studentSkills = profileResponse.data.skills || [];
+      const internshipSkills = internshipResponse.data.skillsRequired || [];
+      
+      if (studentSkills.length > 0 && internshipSkills.length > 0) {
+        const matchedSkills = studentSkills.filter(skill => internshipSkills.includes(skill));
+        const score = Math.round((matchedSkills.length / internshipSkills.length) * 100);
+        setMatchScore(Math.min(score, 100));
+      } else {
+        setMatchScore(0);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError(error.response?.data?.detail || 'Failed to load internship details');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Student profile (would come from API - prefilled)
-  const studentProfile = {
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@university.edu',
-    phone: '+234 800 000 0000',
-    university: 'University of Lagos',
-    faculty: 'Faculty of Science',
-    department: 'Computer Science',
-    level: '400L',
-    skills: ['React', 'JavaScript', 'CSS', 'Python', 'SQL'],
-    interests: ['Web Development', 'Data Science'],
-    careerAspiration: 'Full Stack Developer',
-  };
-
-  const handleApply = () => {
+  const handleApply = async () => {
     setApplying(true);
-    // Simulate API call
-    setTimeout(() => {
-      setApplying(false);
+    setError('');
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to apply');
+        setApplying(false);
+        return;
+      }
+
+      const payload = {
+        internshipId: id,
+        coverLetter: '', // Optional: Add cover letter field if needed
+      };
+
+      console.log('Submitting application with payload:', payload);
+      await api.post('/api/applications/apply', payload);
       setApplied(true);
-      // Redirect back to internships after 2 seconds
       setTimeout(() => {
-        navigate('/student/internships');
+        navigate('/student/applications');
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      console.error('Error applying:', error);
+      setError(error.response?.data?.detail || 'Failed to submit application. Please try again.');
+      setApplying(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+          <p className="mt-4 text-text-secondary">Loading internship details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !internship) {
+    return (
+      <Container className="py-12">
+        <Card variant="bordered" padding="lg" className="max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-status-error/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-10 h-10 text-status-error" />
+          </div>
+          <h2 className="text-2xl font-bold text-primary-dark mb-2">Error</h2>
+          <p className="text-text-secondary mb-6">{error}</p>
+          <Button variant="outline" onClick={() => navigate('/student/internships')}>
+            Back to Internships
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
+
+  if (!internship) {
+    return (
+      <Container className="py-12">
+        <Card variant="bordered" padding="lg" className="max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Briefcase className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-primary-dark mb-2">Internship Not Found</h2>
+          <p className="text-text-secondary mb-6">The internship you're looking for doesn't exist.</p>
+          <Button variant="primary" onClick={() => navigate('/student/internships')}>
+            Browse Internships
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
 
   if (applied) {
     return (
@@ -73,7 +164,7 @@ const ApplyNow = () => {
           <p className="text-text-secondary mb-6">
             Your application for <strong>{internship.title}</strong> has been successfully submitted.
           </p>
-          <p className="text-sm text-text-muted">Redirecting to internships...</p>
+          <p className="text-sm text-text-muted">Redirecting to applications...</p>
         </Card>
       </Container>
     );
@@ -90,23 +181,30 @@ const ApplyNow = () => {
         Back to Internships
       </button>
 
+      {error && (
+        <div className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content - Left */}
         <div className="lg:col-span-2 space-y-6">
           {/* Internship Details */}
           <Card variant="bordered" padding="lg">
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-primary-dark">{internship.title}</h1>
-              <p className="text-text-secondary flex items-center mt-1">
-                <Building2 className="w-4 h-4 mr-1" />
-                {internship.company}
-              </p>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-primary-dark">{internship.title}</h1>
+                <p className="text-text-secondary flex items-center mt-1">
+                  <Building2 className="w-4 h-4 mr-1" />
+                  {internship.companyName || internship.company || 'Unknown Company'}
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
+                {matchScore || internship.match || 0}% Match
+              </span>
             </div>
-            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
-              {internship.match} Match
-            </span>
-          </div>
 
             <div className="flex flex-wrap gap-4 text-sm text-text-secondary mb-4">
               <span className="flex items-center">
@@ -124,7 +222,7 @@ const ApplyNow = () => {
             </div>
 
             <div className="flex flex-wrap gap-2 mb-4">
-              {internship.tags.map((tag, i) => (
+              {internship.skillsRequired && internship.skillsRequired.map((tag, i) => (
                 <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-xs rounded-full">
                   {tag}
                 </span>
@@ -133,34 +231,42 @@ const ApplyNow = () => {
 
             <div className="prose prose-sm max-w-none">
               <h4 className="text-sm font-semibold text-primary-dark">About the Role</h4>
-              <p className="text-text-secondary text-sm">{internship.description}</p>
+              <p className="text-text-secondary text-sm">{internship.aboutRole || internship.description}</p>
 
               <h4 className="text-sm font-semibold text-primary-dark mt-4">About the Company</h4>
-              <p className="text-text-secondary text-sm">{internship.about}</p>
+              <p className="text-text-secondary text-sm">{internship.aboutCompany || internship.about}</p>
 
-              <h4 className="text-sm font-semibold text-primary-dark mt-4">Requirements</h4>
-              <ul className="list-disc list-inside text-text-secondary text-sm space-y-1">
-                {internship.requirements.map((req, i) => (
-                  <li key={i}>{req}</li>
-                ))}
-              </ul>
+              {internship.requirements && internship.requirements.length > 0 && (
+                <>
+                  <h4 className="text-sm font-semibold text-primary-dark mt-4">Requirements</h4>
+                  <ul className="list-disc list-inside text-text-secondary text-sm space-y-1">
+                    {internship.requirements.map((req, i) => (
+                      <li key={i}>{req}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
-              <h4 className="text-sm font-semibold text-primary-dark mt-4">Benefits</h4>
-              <ul className="list-disc list-inside text-text-secondary text-sm space-y-1">
-                {internship.benefits.map((benefit, i) => (
-                  <li key={i}>{benefit}</li>
-                ))}
-              </ul>
+              {internship.benefits && internship.benefits.length > 0 && (
+                <>
+                  <h4 className="text-sm font-semibold text-primary-dark mt-4">Benefits</h4>
+                  <ul className="list-disc list-inside text-text-secondary text-sm space-y-1">
+                    {internship.benefits.map((benefit, i) => (
+                      <li key={i}>{benefit}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border-light">
               <div>
                 <p className="text-xs text-text-muted">Application Deadline</p>
-                <p className="text-sm font-medium text-primary-dark">{internship.deadline}</p>
+                <p className="text-sm font-medium text-primary-dark">{internship.applicationDeadline || internship.deadline}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-xs text-text-muted">Availability</p>
-                <p className="text-sm font-medium text-primary-dark">{internship.spots}</p>
+                <p className="text-sm font-medium text-primary-dark">{internship.spotsAvailable || internship.spots} spots available</p>
               </div>
             </div>
           </Card>
@@ -179,38 +285,38 @@ const ApplyNow = () => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Full Name</span>
                 <span className="font-medium text-primary-dark">
-                  {studentProfile.firstName} {studentProfile.lastName}
+                  {studentProfile?.firstName || ''} {studentProfile?.lastName || ''}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Email</span>
-                <span className="font-medium text-primary-dark">{studentProfile.email}</span>
+                <span className="font-medium text-primary-dark">{studentProfile?.email || ''}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Phone</span>
-                <span className="font-medium text-primary-dark">{studentProfile.phone}</span>
+                <span className="font-medium text-primary-dark">{studentProfile?.phone || ''}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">University</span>
-                <span className="font-medium text-primary-dark">{studentProfile.university}</span>
+                <span className="font-medium text-primary-dark">{studentProfile?.university || ''}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Department</span>
-                <span className="font-medium text-primary-dark">{studentProfile.department}</span>
+                <span className="font-medium text-primary-dark">{studentProfile?.department || ''}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Level</span>
-                <span className="font-medium text-primary-dark">{studentProfile.level}</span>
+                <span className="font-medium text-primary-dark">{studentProfile?.level || ''}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Skills</span>
                 <span className="font-medium text-primary-dark text-xs">
-                  {studentProfile.skills.join(', ')}
+                  {studentProfile?.skills?.join(', ') || 'No skills added'}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Career Aspiration</span>
-                <span className="font-medium text-primary-dark">{studentProfile.careerAspiration}</span>
+                <span className="font-medium text-primary-dark">{studentProfile?.careerAspiration || 'Not set'}</span>
               </div>
             </div>
 
@@ -229,7 +335,7 @@ const ApplyNow = () => {
             </Button>
 
             <p className="text-xs text-text-muted text-center mt-3">
-              By applying, you agree to share your profile information with {internship.company}
+              By applying, you agree to share your profile information with {internship.companyName || internship.company}
             </p>
           </Card>
         </div>

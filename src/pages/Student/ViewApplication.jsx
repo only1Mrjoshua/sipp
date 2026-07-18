@@ -1,62 +1,64 @@
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft,
     Building2,
     MapPin,
-    Clock, CheckCircle,
+    Clock,
+    CheckCircle,
     XCircle,
-    Calendar, MessageCircle,
+    Calendar,
+    MessageCircle,
     ExternalLink,
-    AlertCircle
+    AlertCircle,
+    Loader,
+    Mail
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
 import Badge from '../../components/common/Badge';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const ViewApplication = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [applicationData, setApplicationData] = useState(null);
+  const [error, setError] = useState('');
 
-  // Mock application data (would come from API)
-  const application = {
-    id: id,
-    title: 'Frontend Developer Intern',
-    company: 'TechCorp Inc.',
-    location: 'Lagos, Nigeria',
-    type: 'Full-time',
-    duration: '6 months',
-    status: 'In Review',
-    appliedDate: 'December 10, 2024',
-    match: '95%',
-    tags: ['React', 'JavaScript', 'CSS', 'Tailwind'],
-    description: 'We are looking for a passionate Frontend Developer Intern to join our dynamic team. You will work on exciting projects and learn from experienced developers.',
-    about: 'TechCorp Inc. is a leading technology company specializing in innovative web solutions. We have a track record of mentoring young talents and helping them grow into successful professionals.',
-    requirements: ['Proficiency in React.js', 'Strong JavaScript skills', 'Understanding of CSS and responsive design', 'Good communication skills'],
-    benefits: ['Mentorship program', 'Remote work options', 'Flexible working hours', 'Potential for full-time offer'],
-    startDate: 'January 2025',
-    deadline: 'December 15, 2024',
-    companyEmail: 'hr@techcorp.com',
-    companyPhone: '+234 800 123 4567',
-    companyWebsite: 'www.techcorp.com',
-    timeline: [
-      { date: 'Dec 10, 2024', event: 'Application Submitted', status: 'completed' },
-      { date: 'Dec 12, 2024', event: 'Application Reviewed', status: 'completed' },
-      { date: 'Dec 20, 2024', event: 'Final Decision', status: 'pending' },
-    ],
-    notes: 'Your application is currently being reviewed by the hiring team. We will reach out to you soon with updates.',
-    contactPerson: 'Sarah Johnson',
-    contactRole: 'Hiring Manager',
-    interviewDetails: {
-      scheduled: true,
-      date: 'December 18, 2024',
-      time: '2:00 PM WAT',
-      platform: 'Google Meet',
-      link: 'https://meet.google.com/abc-defg-hij',
+  useEffect(() => {
+    fetchApplicationData();
+  }, [id]);
+
+  const fetchApplicationData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to view this application');
+        setLoading(false);
+        return;
+      }
+
+      const response = await api.get(`/api/applications/${id}/full`);
+      console.log('Full application data:', response.data);
+      setApplicationData(response.data);
+    } catch (error) {
+      console.error('Error fetching application:', error);
+      setError(error.response?.data?.detail || 'Failed to load application details');
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatusBadge = (status) => {
+    if (!status) {
+      return { icon: Clock, className: 'bg-text-muted/10 text-text-muted' };
+    }
+    
     switch(status) {
       case 'Accepted':
         return { icon: CheckCircle, className: 'bg-status-success/10 text-status-success' };
@@ -65,15 +67,103 @@ const ViewApplication = () => {
       case 'In Review':
         return { icon: Clock, className: 'bg-accent-yellow/10 text-accent-yellow' };
       default:
-        return { icon: Clock, className: 'bg-accent-yellow/10 text-accent-yellow' };
+        return { icon: Clock, className: 'bg-text-muted/10 text-text-muted' };
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const handleMessageEmployer = () => {
+    const phoneNumber = applicationData?.company?.phone;
+    if (phoneNumber) {
+      const formattedNumber = phoneNumber.replace(/[^0-9+]/g, '');
+      window.location.href = `sms:${formattedNumber}`;
+    } else {
+      alert('No phone number available for this employer');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container className="py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="mt-4 text-text-secondary">Loading application details...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error || !applicationData) {
+    return (
+      <Container className="py-8">
+        <button
+          onClick={() => navigate('/student/applications')}
+          className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+          Back to Applications
+        </button>
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Application</h2>
+          <p className="text-text-secondary">{error || 'Application not found'}</p>
+          <Button 
+            variant="primary" 
+            className="mt-4"
+            onClick={fetchApplicationData}
+          >
+            Try Again
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
+
+  const { application, internship, company } = applicationData;
   const StatusIcon = getStatusBadge(application.status).icon;
+
+  const timeline = [
+    { 
+      date: formatDate(application.createdAt), 
+      event: 'Application Submitted', 
+      status: 'completed' 
+    },
+    { 
+      date: application.status ? formatDate(application.updatedAt) : 'Pending', 
+      event: 'Application Reviewed', 
+      status: application.status ? 'completed' : 'pending'
+    },
+    { 
+      date: application.status === 'Accepted' || application.status === 'Rejected' 
+        ? formatDate(application.updatedAt) 
+        : 'Pending', 
+      event: 'Final Decision', 
+      status: application.status === 'Accepted' || application.status === 'Rejected' ? 'completed' : 'pending'
+    },
+  ];
+
+  const companyName = company?.companyName || application?.companyName || 'Company';
+  const companyEmail = company?.email || application?.companyEmail || 'Not provided';
+  const companyPhone = company?.phone || application?.companyPhone || 'Not provided';
+  const companyWebsite = company?.website || '#';
+
+  const internshipTitle = internship?.title || application?.internshipTitle || 'Internship Position';
+  const internshipLocation = internship?.location || 'Not specified';
+  const internshipDuration = internship?.duration || 'Not specified';
 
   return (
     <Container className="py-8">
-      {/* Back Button */}
       <button
         onClick={() => navigate('/student/applications')}
         className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
@@ -83,51 +173,86 @@ const ViewApplication = () => {
       </button>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Content - Left */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Application Header */}
           <Card variant="bordered" padding="lg">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-primary-dark">{application.title}</h1>
-                  <Badge className={`${getStatusBadge(application.status).className} whitespace-nowrap shrink-0`}>
-                    <StatusIcon className="w-4 h-4 mr-1" />
-                    {application.status}
-                  </Badge>
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-primary-dark">{internshipTitle}</h1>
+                  {application.status && (
+                    <Badge className={`${getStatusBadge(application.status).className} whitespace-nowrap shrink-0`}>
+                      <StatusIcon className="w-4 h-4 mr-1" />
+                      {application.status}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-text-secondary flex items-center">
                   <Building2 className="w-4 h-4 mr-1" />
-                  {application.company}
+                  {companyName}
                 </p>
                 <div className="flex flex-wrap gap-4 mt-3 text-sm text-text-secondary">
                   <span className="flex items-center">
                     <MapPin className="w-4 h-4 mr-1" />
-                    {application.location}
+                    {internshipLocation}
                   </span>
                   <span className="flex items-center">
                     <Clock className="w-4 h-4 mr-1" />
-                    {application.duration}
+                    {internshipDuration}
                   </span>
                   <span className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1" />
-                    Applied: {application.appliedDate}
+                    Applied: {formatDate(application.createdAt)}
                   </span>
                 </div>
               </div>
               <div className="flex flex-col items-end">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
-                {application.match} Match
-              </span>
+                <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
+                  {application.matchScore || 0}% Match
+                </span>
               </div>
             </div>
           </Card>
 
-          {/* Application Timeline */}
+          {internship?.aboutRole && (
+            <Card variant="bordered" padding="lg">
+              <h2 className="text-lg font-bold text-primary-dark mb-3">About the Role</h2>
+              <p className="text-text-secondary leading-relaxed">{internship.aboutRole}</p>
+            </Card>
+          )}
+
+          {(internship?.aboutCompany || company?.aboutCompany) && (
+            <Card variant="bordered" padding="lg">
+              <h2 className="text-lg font-bold text-primary-dark mb-3">About the Company</h2>
+              <p className="text-text-secondary leading-relaxed">{internship?.aboutCompany || company?.aboutCompany}</p>
+            </Card>
+          )}
+
+          {internship?.skillsRequired && internship.skillsRequired.length > 0 && (
+            <Card variant="bordered" padding="lg">
+              <h2 className="text-lg font-bold text-primary-dark mb-3">Requirements</h2>
+              <ul className="list-disc list-inside space-y-2 text-text-secondary">
+                {internship.skillsRequired.map((req, index) => (
+                  <li key={index}>{req}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {internship?.benefits && internship.benefits.length > 0 && (
+            <Card variant="bordered" padding="lg">
+              <h2 className="text-lg font-bold text-primary-dark mb-3">Benefits</h2>
+              <ul className="list-disc list-inside space-y-2 text-text-secondary">
+                {internship.benefits.map((benefit, index) => (
+                  <li key={index}>{benefit}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           <Card variant="bordered" padding="lg">
             <h2 className="text-lg font-bold text-primary-dark mb-4">Application Timeline</h2>
             <div className="space-y-4">
-              {application.timeline.map((item, index) => (
+              {timeline.map((item, index) => (
                 <div key={index} className="flex items-start gap-4">
                   <div className="flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -141,7 +266,7 @@ const ViewApplication = () => {
                         <Clock className="w-4 h-4" />
                       )}
                     </div>
-                    {index < application.timeline.length - 1 && (
+                    {index < timeline.length - 1 && (
                       <div className={`w-0.5 h-8 ${
                         item.status === 'completed' 
                           ? 'bg-status-success' 
@@ -164,62 +289,102 @@ const ViewApplication = () => {
             </div>
           </Card>
 
-          {/* Application Notes */}
-          {application.notes && (
+          {application.note && (
             <Card variant="bordered" padding="lg" className="bg-accent-yellow/5 border-accent-yellow/20">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-accent-yellow flex-shrink-0 mt-0.5" />
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark">Notes from Employer</h3>
-                  <p className="text-text-secondary text-sm mt-1">{application.notes}</p>
+                  <p className="text-text-secondary text-sm mt-1">{application.note}</p>
                 </div>
               </div>
             </Card>
           )}
         </div>
 
-        {/* Right Sidebar */}
         <div className="space-y-6">
-          {/* Contact Information */}
           <Card variant="bordered" padding="lg" className="sticky top-24">
             <h2 className="text-lg font-bold text-primary-dark mb-4">Contact Information</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-text-muted">Contact Person</p>
-                <p className="font-medium text-primary-dark">{application.contactPerson}</p>
-                <p className="text-sm text-text-secondary">{application.contactRole}</p>
+                <p className="text-xs text-text-muted">Company Name</p>
+                <p className="font-medium text-primary-dark">{companyName}</p>
               </div>
               <div>
                 <p className="text-xs text-text-muted">Company Email</p>
-                <a href={`mailto:${application.companyEmail}`} className="text-primary hover:underline text-sm">
-                  {application.companyEmail}
-                </a>
+                {companyEmail && companyEmail !== 'Not provided' ? (
+                  <a href={`mailto:${companyEmail}`} className="text-primary hover:underline text-sm">
+                    {companyEmail}
+                  </a>
+                ) : (
+                  <p className="text-sm text-text-secondary">Not provided</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-text-muted">Phone</p>
-                <a href={`tel:${application.companyPhone}`} className="text-primary hover:underline text-sm">
-                  {application.companyPhone}
-                </a>
+                {companyPhone && companyPhone !== 'Not provided' ? (
+                  <a href={`tel:${companyPhone}`} className="text-primary hover:underline text-sm">
+                    {companyPhone}
+                  </a>
+                ) : (
+                  <p className="text-sm text-text-secondary">Not provided</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-text-muted">Website</p>
-                <a 
-                  href={`https://${application.companyWebsite}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline text-sm flex items-center"
-                >
-                  {application.companyWebsite} <ExternalLink className="w-3 h-3 ml-1" />
-                </a>
+                {companyWebsite && companyWebsite !== '#' ? (
+                  <a 
+                    href={companyWebsite.startsWith('http') ? companyWebsite : `https://${companyWebsite}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline text-sm flex items-center"
+                  >
+                    {companyWebsite} <ExternalLink className="w-3 h-3 ml-1" />
+                  </a>
+                ) : (
+                  <p className="text-sm text-text-secondary">Not provided</p>
+                )}
               </div>
+              {internship?.applicationDeadline && (
+                <div>
+                  <p className="text-xs text-text-muted">Application Deadline</p>
+                  <p className="text-sm font-medium text-primary-dark">
+                    <Calendar className="w-4 h-4 mr-2 text-primary inline" />
+                    {formatDate(internship.applicationDeadline)}
+                  </p>
+                </div>
+              )}
+              {internship?.spotsAvailable !== undefined && (
+                <div>
+                  <p className="text-xs text-text-muted">Spots Available</p>
+                  <p className="text-sm font-medium text-primary-dark">{internship.spotsAvailable}</p>
+                </div>
+              )}
             </div>
 
-            {/* Action Buttons */}
             <div className="mt-4 pt-4 border-t border-border-light space-y-3">
-              <Button variant="primary" size="sm" fullWidth>
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Message Employer
-              </Button>
+              {companyPhone && companyPhone !== 'Not provided' ? (
+                <Button variant="primary" size="sm" fullWidth onClick={handleMessageEmployer}>
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Message Employer
+                </Button>
+              ) : (
+                <Button variant="primary" size="sm" fullWidth disabled className="opacity-50 cursor-not-allowed">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  No Phone Number Available
+                </Button>
+              )}
+              {companyEmail && companyEmail !== 'Not provided' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  fullWidth
+                  onClick={() => window.location.href = `mailto:${companyEmail}`}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send Email
+                </Button>
+              )}
             </div>
           </Card>
         </div>

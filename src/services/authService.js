@@ -57,6 +57,9 @@ export const authService = {
   logout: () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('pending_email');
+    // Redirect to login
+    window.location.href = '/login';
   },
 
   // Get current user
@@ -67,6 +70,27 @@ export const authService = {
 
   // Check if authenticated
   isAuthenticated: () => {
-    return !!localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
+    if (!token) return false;
+    
+    // Optional: Check if token is expired (you can decode and check exp)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        // Token expired
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+    
+    return true;
   },
+
+  // Get token
+  getToken: () => {
+    return localStorage.getItem('access_token');
+  }
 };

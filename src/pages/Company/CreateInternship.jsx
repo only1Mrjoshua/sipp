@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -13,28 +13,28 @@ import {
   Tag,
   GraduationCap,
   Send,
-  Save,
   X,
   Plus,
-  CheckCircle
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const CreateInternship = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [newSkill, setNewSkill] = useState('');
-  
-  // Company profile data (would come from API)
-  const companyProfile = {
-    companyName: 'TechCorp Inc.',
-    skillsRequired: ['React', 'JavaScript', 'Python', 'SQL', 'Java'],
-    skillsOffered: ['React', 'Node.js', 'TypeScript', 'AWS', 'Docker'],
-    benefits: ['Remote', 'Paid', 'Mentorship', 'Certificate', 'Hybrid'],
-  };
+  const [error, setError] = useState('');
+  const [companyProfile, setCompanyProfile] = useState({
+    companyName: '',
+    skillsRequired: [],
+    skillsOffered: [],
+    benefits: [],
+  });
 
   const [formData, setFormData] = useState({
     title: '',
@@ -45,9 +45,9 @@ const CreateInternship = () => {
     aboutCompany: '',
     applicationDeadline: '',
     spotsAvailable: '',
-    skillsRequired: [...companyProfile.skillsRequired],
-    skillsOffered: [...companyProfile.skillsOffered],
-    benefits: [...companyProfile.benefits],
+    skillsRequired: [],
+    skillsOffered: [],
+    benefits: [],
   });
 
   const [newSkillToAdd, setNewSkillToAdd] = useState('');
@@ -57,9 +57,40 @@ const CreateInternship = () => {
   const internshipTypes = ['Full-time', 'Part-time', 'Remote', 'Hybrid'];
   const durationOptions = ['3 months', '4 months', '6 months', '9 months', '12 months'];
 
+  useEffect(() => {
+    fetchCompanyProfile();
+  }, []);
+
+  const fetchCompanyProfile = async () => {
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) return;
+
+      const response = await api.get(`/api/companies/profile/${userData.id}`);
+      const data = response.data;
+      
+      setCompanyProfile({
+        companyName: data.companyName || '',
+        skillsRequired: data.skillsRequired || [],
+        skillsOffered: data.skillsOffered || [],
+        benefits: data.benefits || [],
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        skillsRequired: data.skillsRequired || [],
+        skillsOffered: data.skillsOffered || [],
+        benefits: data.benefits || [],
+      }));
+    } catch (error) {
+      console.error('Error fetching company profile:', error);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    setError('');
   };
 
   const handleAddSkill = () => {
@@ -113,17 +144,107 @@ const CreateInternship = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+
+    // Validation
+    if (!formData.title?.trim()) {
+      setError('Please enter an internship title');
       setLoading(false);
+      return;
+    }
+    if (!formData.location?.trim()) {
+      setError('Please enter a location');
+      setLoading(false);
+      return;
+    }
+    if (!formData.aboutRole?.trim()) {
+      setError('Please describe the role');
+      setLoading(false);
+      return;
+    }
+    if (!formData.aboutCompany?.trim()) {
+      setError('Please describe your company');
+      setLoading(false);
+      return;
+    }
+    if (!formData.applicationDeadline) {
+      setError('Please set an application deadline');
+      setLoading(false);
+      return;
+    }
+    if (!formData.spotsAvailable || parseInt(formData.spotsAvailable) < 1) {
+      setError('Please enter a valid number of spots');
+      setLoading(false);
+      return;
+    }
+
+    // Prepare payload - ensure all fields match backend
+    const payload = {
+      title: formData.title.trim(),
+      location: formData.location.trim(),
+      type: formData.type,
+      duration: formData.duration,
+      aboutRole: formData.aboutRole.trim(),
+      aboutCompany: formData.aboutCompany.trim(),
+      applicationDeadline: formData.applicationDeadline,
+      spotsAvailable: parseInt(formData.spotsAvailable),
+      skillsRequired: formData.skillsRequired || [],
+      skillsOffered: formData.skillsOffered || [],
+      benefits: formData.benefits || [],
+    };
+
+    try {
+      const response = await api.post('/api/internships/create', payload);
       setSuccess(true);
       setTimeout(() => {
-        navigate('/company/applications');
+        navigate('/company/internships');
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      // Enhanced error logging
+      console.error('Full error object:', error);
+      console.error('Error response:', error.response);
+      alert(JSON.stringify(error.response.data.detail, null, 2));
+      
+      // Display the actual error message from the backend
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        
+        // If detail is an array (validation errors from Pydantic)
+        if (Array.isArray(detail)) {
+          // Extract the error message from each validation error
+          const errorMessages = detail
+            .map(err => {
+              // Get the field name
+              let field = 'Unknown field';
+              if (err.loc) {
+                // Pydantic puts the field name in loc array
+                field = err.loc[err.loc.length - 1];
+              }
+              const msg = err.msg || err.message || 'Invalid value';
+              return `${field}: ${msg}`;
+            })
+            .join('. ');
+          setError(errorMessages);
+        } 
+        // If detail is a string
+        else if (typeof detail === 'string') {
+          setError(detail);
+        } 
+        // If detail is an object
+        else if (typeof detail === 'object') {
+          setError(detail.msg || detail.message || JSON.stringify(detail));
+        } 
+        else {
+          setError('Failed to create internship. Please check your input.');
+        }
+      } else {
+        setError(error.message || 'Failed to create internship. Please try again.');
+      }
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -137,7 +258,7 @@ const CreateInternship = () => {
           <p className="text-text-secondary mb-6">
             Your internship has been successfully published. Students can now apply.
           </p>
-          <p className="text-sm text-text-muted">Redirecting to applications...</p>
+          <p className="text-sm text-text-muted">Redirecting to internships...</p>
         </Card>
       </Container>
     );
@@ -145,19 +266,29 @@ const CreateInternship = () => {
 
   return (
     <Container className="py-8 max-w-4xl">
-      {/* Back Button */}
       <button
-        onClick={() => navigate('/company/applications')}
+        onClick={() => navigate('/company/internships')}
         className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
       >
         <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-        Back to Applications
+        Back to Internships
       </button>
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Create Internship</h1>
         <p className="text-text-secondary">Post a new internship opportunity for students</p>
       </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-start gap-2"
+        >
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span className="break-words">{error}</span>
+        </motion.div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -296,26 +427,30 @@ const CreateInternship = () => {
           </div>
         </Card>
 
-        {/* Skills (Prefilled from Profile) */}
+        {/* Skills Required */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
             <Tag className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Skills Required <span className="text-sm font-normal text-text-muted ml-2">(Prefilled from profile)</span>
+            Skills Required <span className="text-sm font-normal text-text-muted ml-2">(From your profile)</span>
           </h3>
           <div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {formData.skillsRequired.map((skill, i) => (
-                <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
-                  {skill}
-                  <button
-                    onClick={() => handleRemoveSkill(skill)}
-                    className="ml-1 hover:text-status-error transition-colors shrink-0"
-                    type="button"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
+              {formData.skillsRequired.length === 0 ? (
+                <p className="text-sm text-text-muted italic">No skills added yet. Add skills below.</p>
+              ) : (
+                formData.skillsRequired.map((skill, i) => (
+                  <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
+                    {skill}
+                    <button
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="ml-1 hover:text-status-error transition-colors shrink-0"
+                      type="button"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <input
@@ -339,26 +474,30 @@ const CreateInternship = () => {
           </div>
         </Card>
 
-        {/* Skills to be Offered (Prefilled from Profile) */}
+        {/* Skills to be Offered */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
             <GraduationCap className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Skills to be Offered <span className="text-sm font-normal text-text-muted ml-2">(Prefilled from profile)</span>
+            Skills to be Offered <span className="text-sm font-normal text-text-muted ml-2">(From your profile)</span>
           </h3>
           <div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {formData.skillsOffered.map((skill, i) => (
-                <span key={i} className="max-w-full break-words px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
-                  {skill}
-                  <button
-                    onClick={() => handleRemoveOfferedSkill(skill)}
-                    className="ml-1 hover:text-status-error transition-colors shrink-0"
-                    type="button"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
+              {formData.skillsOffered.length === 0 ? (
+                <p className="text-sm text-text-muted italic">No skills added yet. Add skills below.</p>
+              ) : (
+                formData.skillsOffered.map((skill, i) => (
+                  <span key={i} className="max-w-full break-words px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
+                    {skill}
+                    <button
+                      onClick={() => handleRemoveOfferedSkill(skill)}
+                      className="ml-1 hover:text-status-error transition-colors shrink-0"
+                      type="button"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <input
@@ -382,26 +521,30 @@ const CreateInternship = () => {
           </div>
         </Card>
 
-        {/* Benefits (Prefilled from Profile) */}
+        {/* Benefits */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
             <Building2 className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Benefits Offered <span className="text-sm font-normal text-text-muted ml-2">(Prefilled from profile)</span>
+            Benefits Offered <span className="text-sm font-normal text-text-muted ml-2">(From your profile)</span>
           </h3>
           <div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {formData.benefits.map((benefit, i) => (
-                <span key={i} className="max-w-full break-words px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
-                  {benefit}
-                  <button
-                    onClick={() => handleRemoveBenefit(benefit)}
-                    className="ml-1 hover:text-status-error transition-colors shrink-0"
-                    type="button"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
+              {formData.benefits.length === 0 ? (
+                <p className="text-sm text-text-muted italic">No benefits added yet. Add benefits below.</p>
+              ) : (
+                formData.benefits.map((benefit, i) => (
+                  <span key={i} className="max-w-full break-words px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
+                    {benefit}
+                    <button
+                      onClick={() => handleRemoveBenefit(benefit)}
+                      className="ml-1 hover:text-status-error transition-colors shrink-0"
+                      type="button"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <input
@@ -454,7 +597,7 @@ const CreateInternship = () => {
         <div className="flex flex-col sm:flex-row gap-3 justify-end">
           <Button 
             variant="outline" 
-            onClick={() => navigate('/company/applications')}
+            onClick={() => navigate('/company/internships')}
             type="button"
             className="w-full sm:w-auto"
           >

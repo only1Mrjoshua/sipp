@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Briefcase,
   FileCheck, 
@@ -12,10 +12,15 @@ import {
 } from 'lucide-react';
 import Container from '../components/common/Container';
 import logo from '../assets/images/logo.png';
+import { authService } from '../services/authService';
+import api from '../services/api';
 
 const CompanyLayout = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profilePicture, setProfilePicture] = useState(null);
   const location = useLocation();
   const sidebarRef = useRef(null);
 
@@ -25,6 +30,26 @@ const CompanyLayout = () => {
     { icon: FileCheck, label: 'Applications', path: '/company/applications' },
     { icon: User, label: 'Profile', path: '/company/profile' },
   ];
+
+  // Get user data on mount
+  useEffect(() => {
+    const userData = authService.getCurrentUser();
+    setUser(userData);
+    if (userData) {
+      fetchProfilePicture(userData.id);
+    }
+  }, []);
+
+  const fetchProfilePicture = async (userId) => {
+    try {
+      const response = await api.get(`/api/companies/profile/${userId}`);
+      if (response.data.profilePicture) {
+        setProfilePicture(response.data.profilePicture);
+      }
+    } catch (error) {
+      console.error('Error fetching profile picture:', error);
+    }
+  };
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -63,6 +88,24 @@ const CompanyLayout = () => {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return '?';
+    if (user.companyName) {
+      return user.companyName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    return '?';
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/login');
   };
 
   return (
@@ -169,7 +212,7 @@ const CompanyLayout = () => {
           {/* Logout */}
           <div className="border-t border-border-light p-4 flex-shrink-0">
             <button
-              onClick={closeMobileMenu}
+              onClick={handleLogout}
               className="flex w-full items-center rounded-xl px-4 py-3 text-status-error hover:bg-status-error/10 transition-colors"
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -206,12 +249,20 @@ const CompanyLayout = () => {
               <div className="ml-auto">
                 <Link
                   to="/company/profile"
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-light hover:bg-primary transition-colors duration-200 group"
+                  className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-light hover:bg-primary transition-colors duration-200 group overflow-hidden"
                   title="Profile"
                 >
-                  <span className="text-sm font-bold text-primary-dark group-hover:text-white">
-                    TC
-                  </span>
+                  {profilePicture ? (
+                    <img 
+                      src={profilePicture} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-sm font-bold text-primary-dark group-hover:text-white">
+                      {getUserInitials()}
+                    </span>
+                  )}
                 </Link>
               </div>
             </div>
