@@ -403,7 +403,79 @@ async def update_application_status(
     }
 
 
-# ============ NEW ENDPOINT ============
+# ============ GET APPLICATIONS BY INTERNSHIP ============
+@router.get("/internship/{internship_id}")
+async def get_applications_by_internship(
+    internship_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Get all applications for a specific internship"""
+    
+    if user.get("role") != "company":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only companies can view applications"
+        )
+    
+    applications_collection = await get_applications_collection()
+    users_collection = await get_users_collection()
+    
+    # Check if the internship belongs to this company
+    internships_collection = await get_internships_collection()
+    try:
+        internship = await internships_collection.find_one({"_id": ObjectId(internship_id)})
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid internship ID"
+        )
+    
+    if not internship:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Internship not found"
+        )
+    
+    if internship["companyId"] != str(user["_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view applications for your own internships"
+        )
+    
+    # Get applications for this internship
+    applications = await applications_collection.find({
+        "internshipId": internship_id
+    }).to_list(None)
+    
+    # Get student details for each application
+    result = []
+    for app in applications:
+        # Get student details
+        student = await users_collection.find_one({"_id": ObjectId(app["studentId"])})
+        result.append({
+            "_id": str(app["_id"]),
+            "studentName": app.get("studentName", ""),
+            "studentEmail": app.get("studentEmail", ""),
+            "status": app.get("status", ""),
+            "createdAt": app.get("createdAt"),
+            "matchScore": app.get("matchScore", 0),
+            "student": {
+                "firstName": student.get("firstName", "") if student else "",
+                "lastName": student.get("lastName", "") if student else "",
+                "email": student.get("email", "") if student else "",
+                "phone": student.get("phone", "") if student else "",
+                "university": student.get("university", "") if student else "",
+                "department": student.get("department", "") if student else "",
+                "level": student.get("level", "") if student else "",
+                "skills": student.get("skills", []) if student else [],
+                "interests": student.get("interests", []) if student else []
+            } if student else None
+        })
+    
+    return result
+
+
+# ============ GET APPLICATION WITH FULL DETAILS ============
 @router.get("/{application_id}/full")
 async def get_application_with_details(
     application_id: str,

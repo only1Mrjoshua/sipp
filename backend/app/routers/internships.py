@@ -264,6 +264,71 @@ async def get_internship(internship_id: str):
     
     return internship
 
+# ============ UPDATE INTERNSHIP ENDPOINT ============
+@router.put("/{internship_id}")
+async def update_internship(
+    internship_id: str,
+    internship_data: InternshipCreate,
+    user: dict = Depends(get_current_user)
+):
+    """Update an existing internship (Company only)"""
+    
+    if user.get("role") != "company":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only companies can update internships"
+        )
+    
+    internships_collection = await get_internships_collection()
+    
+    try:
+        internship = await internships_collection.find_one({"_id": ObjectId(internship_id)})
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid internship ID"
+        )
+    
+    if not internship:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Internship not found"
+        )
+    
+    # Check if company owns this internship
+    if internship["companyId"] != str(user["_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own internships"
+        )
+    
+    # Update the internship
+    update_data = {
+        "title": internship_data.title.strip(),
+        "location": internship_data.location.strip(),
+        "type": internship_data.type,
+        "duration": internship_data.duration,
+        "aboutRole": internship_data.aboutRole.strip(),
+        "aboutCompany": internship_data.aboutCompany.strip(),
+        "applicationDeadline": internship_data.applicationDeadline,
+        "spotsAvailable": int(internship_data.spotsAvailable),
+        "skillsRequired": [s.strip() for s in internship_data.skillsRequired if s and s.strip()] if internship_data.skillsRequired else [],
+        "skillsOffered": [s.strip() for s in internship_data.skillsOffered if s and s.strip()] if internship_data.skillsOffered else [],
+        "benefits": [b.strip() for b in internship_data.benefits if b and b.strip()] if internship_data.benefits else [],
+        "updatedAt": datetime.utcnow()
+    }
+    
+    await internships_collection.update_one(
+        {"_id": ObjectId(internship_id)},
+        {"$set": update_data}
+    )
+    
+    return {
+        "message": "Internship updated successfully",
+        "internship_id": internship_id
+    }
+
+# ============ DELETE INTERNSHIP ENDPOINT ============
 @router.delete("/{internship_id}")
 async def delete_internship(
     internship_id: str,
@@ -311,6 +376,7 @@ async def delete_internship(
     
     return {"message": "Internship and all associated applications deleted successfully"}
 
+# ============ UPDATE INTERNSHIP STATUS ENDPOINT ============
 @router.put("/{internship_id}/status")
 async def update_internship_status(
     internship_id: str,

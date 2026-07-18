@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -17,38 +17,82 @@ import {
   X,
   Plus,
   CheckCircle,
-  Award
+  Award,
+  Loader,
+  AlertCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const EditInternship = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
   const [newSkill, setNewSkill] = useState('');
   const [newOfferedSkill, setNewOfferedSkill] = useState('');
   const [newBenefit, setNewBenefit] = useState('');
 
-  // Mock data - would come from API based on id
   const [formData, setFormData] = useState({
-    title: 'Frontend Developer Intern',
-    location: 'Lagos, Nigeria',
-    type: 'Full-time',
-    duration: '6 months',
-    spotsAvailable: '3',
-    aboutRole: 'We are looking for a passionate Frontend Developer Intern to join our dynamic team. You will work on exciting projects and learn from experienced developers.',
-    aboutCompany: 'TechCorp Inc. is a leading technology company specializing in innovative web solutions. We have a track record of mentoring young talents.',
-    applicationDeadline: '2024-12-15',
-    skillsRequired: ['React', 'JavaScript', 'CSS', 'Tailwind'],
-    skillsOffered: ['React', 'Node.js', 'TypeScript', 'AWS', 'Docker'],
-    benefits: ['Remote', 'Paid', 'Mentorship', 'Certificate', 'Hybrid'],
+    title: '',
+    location: '',
+    type: '',
+    duration: '',
+    spotsAvailable: '',
+    aboutRole: '',
+    aboutCompany: '',
+    applicationDeadline: '',
+    skillsRequired: [],
+    skillsOffered: [],
+    benefits: [],
   });
 
   const internshipTypes = ['Full-time', 'Part-time', 'Remote', 'Hybrid'];
   const durationOptions = ['3 months', '4 months', '6 months', '9 months', '12 months'];
+
+  useEffect(() => {
+    fetchInternshipData();
+  }, [id]);
+
+  const fetchInternshipData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to view this internship');
+        setLoading(false);
+        return;
+      }
+
+      const response = await api.get(`/api/internships/${id}`);
+      const data = response.data;
+      
+      setFormData({
+        title: data.title || '',
+        location: data.location || '',
+        type: data.type || 'Full-time',
+        duration: data.duration || '6 months',
+        spotsAvailable: data.spotsAvailable || '',
+        aboutRole: data.aboutRole || '',
+        aboutCompany: data.aboutCompany || '',
+        applicationDeadline: data.applicationDeadline ? new Date(data.applicationDeadline).toISOString().split('T')[0] : '',
+        skillsRequired: data.skillsRequired || [],
+        skillsOffered: data.skillsOffered || [],
+        benefits: data.benefits || [],
+      });
+    } catch (error) {
+      console.error('Error fetching internship:', error);
+      setError(error.response?.data?.detail || 'Failed to load internship details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -106,22 +150,90 @@ const EditInternship = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    setSubmitting(true);
+    setError('');
+    
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to update this internship');
+        setSubmitting(false);
+        return;
+      }
+
+      // Prepare data for API
+      const updateData = {
+        title: formData.title,
+        location: formData.location,
+        type: formData.type,
+        duration: formData.duration,
+        spotsAvailable: parseInt(formData.spotsAvailable),
+        aboutRole: formData.aboutRole,
+        aboutCompany: formData.aboutCompany,
+        applicationDeadline: formData.applicationDeadline,
+        skillsRequired: formData.skillsRequired,
+        skillsOffered: formData.skillsOffered,
+        benefits: formData.benefits,
+      };
+
+      await api.put(`/api/internships/${id}`, updateData);
+      
       setSuccess(true);
       setTimeout(() => {
         navigate(`/company/internship/${id}`);
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      console.error('Error updating internship:', error);
+      setError(error.response?.data?.detail || 'Failed to update internship. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <Container className="py-8 max-w-4xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="mt-4 text-text-secondary">Loading internship details...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error && !formData.title) {
+    return (
+      <Container className="py-8 max-w-4xl">
+        <button
+          onClick={() => navigate('/company/internships')}
+          className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+          Back to Internships
+        </button>
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Internship</h2>
+          <p className="text-text-secondary">{error}</p>
+          <Button 
+            variant="primary" 
+            className="mt-4"
+            onClick={fetchInternshipData}
+          >
+            Try Again
+          </Button>
+        </Card>
+      </Container>
+    );
+  }
 
   if (success) {
     return (
-      <Container className="py-12">
+      <Container className="py-12 max-w-4xl">
         <Card variant="bordered" padding="lg" className="max-w-md mx-auto text-center">
           <div className="w-20 h-20 bg-status-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-10 h-10 text-status-success" />
@@ -144,13 +256,24 @@ const EditInternship = () => {
         className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
       >
         <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-        Back
+        Back to Internship
       </button>
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Edit Internship</h1>
         <p className="text-text-secondary">Update your internship posting</p>
       </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </motion.div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -455,7 +578,7 @@ const EditInternship = () => {
           <Button 
             variant="primary" 
             type="submit"
-            loading={loading}
+            loading={submitting}
             icon={<Save className="w-4 h-4" />}
             className="w-full sm:w-auto whitespace-nowrap"
           >
