@@ -9,7 +9,8 @@ import {
   CheckCircle,
   Send,
   Loader,
-  AlertCircle
+  AlertCircle,
+  FileCheck
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -23,6 +24,7 @@ const ApplyNow = () => {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [error, setError] = useState('');
   const [internship, setInternship] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
@@ -71,6 +73,18 @@ const ApplyNow = () => {
       } else {
         setMatchScore(0);
       }
+
+      // Check if student has already applied
+      try {
+        const applicationsResponse = await api.get('/api/applications/student');
+        const applications = applicationsResponse.data || [];
+        const hasApplied = applications.some(app => app.internshipId === id);
+        setAlreadyApplied(hasApplied);
+        console.log('Already applied:', hasApplied);
+      } catch (appError) {
+        console.error('Error checking applications:', appError);
+        setAlreadyApplied(false);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setError(error.response?.data?.detail || 'Failed to load internship details');
@@ -80,6 +94,10 @@ const ApplyNow = () => {
   };
 
   const handleApply = async () => {
+    if (alreadyApplied) {
+      return;
+    }
+    
     setApplying(true);
     setError('');
     try {
@@ -170,6 +188,10 @@ const ApplyNow = () => {
     );
   }
 
+  // Use spotsAvailable directly from the internship data
+  const spotsAvailable = internship.spotsAvailable || 0;
+  const isFull = spotsAvailable <= 0;
+
   return (
     <Container className="py-8">
       {/* Back Button */}
@@ -185,6 +207,20 @@ const ApplyNow = () => {
         <div className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
+        </div>
+      )}
+
+      {alreadyApplied && (
+        <div className="mb-4 p-3 bg-status-success/10 text-status-success text-sm rounded-xl border border-status-success/20 flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+          You have already applied to this internship.
+        </div>
+      )}
+
+      {isFull && !alreadyApplied && internship.status === 'Active' && (
+        <div className="mb-4 p-3 bg-accent-yellow/10 text-accent-yellow text-sm rounded-xl border border-accent-yellow/20 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          This internship is currently full. No more spots available.
         </div>
       )}
 
@@ -264,9 +300,11 @@ const ApplyNow = () => {
                 <p className="text-xs text-text-muted">Application Deadline</p>
                 <p className="text-sm font-medium text-primary-dark">{internship.applicationDeadline || internship.deadline}</p>
               </div>
-              <div className="col-span-2">
+              <div>
                 <p className="text-xs text-text-muted">Availability</p>
-                <p className="text-sm font-medium text-primary-dark">{internship.spotsAvailable || internship.spots} spots available</p>
+                <p className={`text-sm font-medium ${spotsAvailable <= 0 ? 'text-status-error' : 'text-primary-dark'}`}>
+                  {spotsAvailable} spots {spotsAvailable <= 0 ? '(Full)' : 'available'}
+                </p>
               </div>
             </div>
           </Card>
@@ -323,19 +361,59 @@ const ApplyNow = () => {
             <div className="mt-4 pt-4 border-t border-border-light">
             </div>
 
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={applying}
-              onClick={handleApply}
-              icon={<Send className="w-5 h-5" />}
-            >
-              Apply Now
-            </Button>
+            {alreadyApplied ? (
+              <Button
+                variant="success"
+                size="lg"
+                fullWidth
+                disabled
+                icon={<FileCheck className="w-5 h-5" />}
+                className="bg-status-success text-white hover:bg-status-success/80 cursor-default"
+              >
+                Applied ✓
+              </Button>
+            ) : isFull ? (
+              <Button
+                variant="outline"
+                size="lg"
+                fullWidth
+                disabled
+                className="cursor-not-allowed opacity-50"
+              >
+                No Spots Available
+              </Button>
+            ) : internship.status !== 'Active' ? (
+              <Button
+                variant="outline"
+                size="lg"
+                fullWidth
+                disabled
+                className="cursor-not-allowed opacity-50"
+              >
+                Internship Closed
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                loading={applying}
+                onClick={handleApply}
+                icon={<Send className="w-5 h-5" />}
+              >
+                Apply Now
+              </Button>
+            )}
 
             <p className="text-xs text-text-muted text-center mt-3">
-              By applying, you agree to share your profile information with {internship.companyName || internship.company}
+              {alreadyApplied 
+                ? "You've already applied to this internship"
+                : isFull
+                ? "No spots available for this internship"
+                : internship.status !== 'Active'
+                ? "This internship is no longer accepting applications"
+                : `By applying, you agree to share your profile information with ${internship.companyName || internship.company}`
+              }
             </p>
           </Card>
         </div>

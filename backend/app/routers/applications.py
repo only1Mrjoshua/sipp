@@ -345,6 +345,7 @@ async def update_application_status(
         )
     
     applications_collection = await get_applications_collection()
+    internships_collection = await get_internships_collection()
     
     try:
         application = await applications_collection.find_one({"_id": ObjectId(application_id)})
@@ -382,6 +383,13 @@ async def update_application_status(
         )
     
     note = status_data.get("note", "")
+    old_status = application.get("status")
+    
+    print(f"=== Updating application status ===")
+    print(f"Application ID: {application_id}")
+    print(f"Old status: {old_status}")
+    print(f"New status: {new_status}")
+    print(f"Internship ID: {application['internshipId']}")
     
     update_data = {
         "status": new_status,
@@ -395,6 +403,42 @@ async def update_application_status(
         {"_id": ObjectId(application_id)},
         {"$set": update_data}
     )
+    
+    # Get the internship
+    internship = await internships_collection.find_one({"_id": ObjectId(application["internshipId"])})
+    
+    if internship:
+        print(f"Found internship: {internship.get('title')}")
+        print(f"Current spots: {internship.get('spotsAvailable')}")
+        
+        current_spots = internship.get("spotsAvailable", 0)
+        new_spots = current_spots
+        
+        # If status changed to "Accepted", decrement spots available
+        if new_status == "Accepted" and old_status != "Accepted":
+            if current_spots > 0:
+                new_spots = current_spots - 1
+                print(f"Decrementing spots: {current_spots} -> {new_spots}")
+            else:
+                print("No spots left to decrement!")
+        
+        # If status changed from "Accepted" to something else, increment spots back
+        elif old_status == "Accepted" and new_status != "Accepted":
+            new_spots = current_spots + 1
+            print(f"Incrementing spots: {current_spots} -> {new_spots}")
+        
+        # Update spots if changed
+        if new_spots != current_spots:
+            result = await internships_collection.update_one(
+                {"_id": ObjectId(application["internshipId"])},
+                {"$set": {"spotsAvailable": new_spots, "updatedAt": datetime.utcnow()}}
+            )
+            print(f"Update result: {result.modified_count} document(s) modified")
+            print(f"New spots value: {new_spots}")
+        else:
+            print("No change to spots needed")
+    else:
+        print(f"ERROR: Internship not found with ID: {application['internshipId']}")
     
     return {
         "message": f"Application status updated to {new_status}",
