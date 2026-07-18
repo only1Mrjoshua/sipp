@@ -1,18 +1,80 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import Container from '../../components/common/Container';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { authService } from '../../services/authService';
 
 const CompanySignup = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    companyName: '',
+    email: '',
+    phone: '',
+    industry: '',
+    state: '',
+    city: '',
+    address: '',
+    password: '',
+    confirmPassword: '',
+    verifyCompany: false,
+    acceptTerms: false,
+  });
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value,
+    });
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Direct navigation to OTP page with company param
-    navigate('/verify-otp?role=company');
+    setError('');
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!formData.verifyCompany) {
+      setError('Please verify that this is a registered company');
+      return;
+    }
+
+    if (!formData.acceptTerms) {
+      setError('Please accept the Terms and Conditions');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { confirmPassword, verifyCompany, acceptTerms, ...registerData } = formData;
+      await authService.registerCompany(registerData);
+      
+      // Save email to localStorage and pass to OTP page
+      localStorage.setItem('pending_email', registerData.email);
+      navigate('/verify-otp?role=company&email=' + encodeURIComponent(registerData.email));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,6 +92,17 @@ const CompanySignup = () => {
                 <p className="text-text-secondary mt-2">Create your company account</p>
               </div>
 
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2"
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </motion.div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Company Information */}
                 <div>
@@ -39,33 +112,45 @@ const CompanySignup = () => {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                        Company Name
+                        Company Name *
                       </label>
                       <input
                         type="text"
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={handleChange}
                         className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                         placeholder="TechCorp Inc."
+                        required
                       />
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                          Official Email
+                          Official Email *
                         </label>
                         <input
                           type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
                           className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                           placeholder="company@email.com"
+                          required
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                          Phone Number
+                          Phone Number *
                         </label>
                         <input
                           type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
                           className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                           placeholder="+234 800 000 0000"
+                          required
                         />
                       </div>
                     </div>
@@ -80,10 +165,14 @@ const CompanySignup = () => {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                        Industry
+                        Industry *
                       </label>
                       <select
+                        name="industry"
+                        value={formData.industry}
+                        onChange={handleChange}
                         className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
+                        required
                       >
                         <option value="">Select Industry</option>
                         <option value="Software">Software</option>
@@ -100,10 +189,14 @@ const CompanySignup = () => {
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                          State
+                          State *
                         </label>
                         <select
+                          name="state"
+                          value={formData.state}
+                          onChange={handleChange}
                           className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
+                          required
                         >
                           <option value="">Select State</option>
                           <option value="Lagos">Lagos</option>
@@ -124,23 +217,31 @@ const CompanySignup = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                          City
+                          City *
                         </label>
                         <input
                           type="text"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleChange}
                           className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                           placeholder="Lekki"
+                          required
                         />
                       </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                        Company Address
+                        Company Address *
                       </label>
                       <textarea
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
                         rows="2"
                         className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
                         placeholder="123 Business District, Lagos"
+                        required
                       />
                     </div>
                   </div>
@@ -154,23 +255,50 @@ const CompanySignup = () => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                        Password
+                        Password *
                       </label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                        placeholder="••••••••"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          name="password"
+                          value={formData.password}
+                          onChange={handleChange}
+                          className="w-full px-4 pr-12 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                          placeholder="••••••••"
+                          required
+                          minLength="6"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary-dark transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                        Confirm Password
+                        Confirm Password *
                       </label>
-                      <input
-                        type="password"
-                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                        placeholder="••••••••"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          name="confirmPassword"
+                          value={formData.confirmPassword}
+                          onChange={handleChange}
+                          className="w-full px-4 pr-12 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                          placeholder="••••••••"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary-dark transition-colors"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -180,7 +308,11 @@ const CompanySignup = () => {
                   <label className="flex items-start space-x-3 cursor-pointer">
                     <input
                       type="checkbox"
+                      name="verifyCompany"
+                      checked={formData.verifyCompany}
+                      onChange={handleChange}
                       className="w-5 h-5 mt-0.5 text-primary border-border-light rounded focus:ring-primary"
+                      required
                     />
                     <span className="text-sm text-text-secondary">
                       Verify that this is a registered company
@@ -189,7 +321,11 @@ const CompanySignup = () => {
                   <label className="flex items-start space-x-3 cursor-pointer">
                     <input
                       type="checkbox"
+                      name="acceptTerms"
+                      checked={formData.acceptTerms}
+                      onChange={handleChange}
                       className="w-5 h-5 mt-0.5 text-primary border-border-light rounded focus:ring-primary"
+                      required
                     />
                     <span className="text-sm text-text-secondary">
                       I accept the{' '}
@@ -206,6 +342,7 @@ const CompanySignup = () => {
                   variant="primary"
                   size="lg"
                   fullWidth
+                  loading={loading}
                   icon={<ArrowRight className="w-5 h-5" />}
                 >
                   Create Account

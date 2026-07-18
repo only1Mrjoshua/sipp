@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Shield } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Mail, Lock, Shield, AlertCircle } from 'lucide-react';
 import Container from '../../components/common/Container';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { authService } from '../../services/authService';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false,
   });
-  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -26,23 +27,19 @@ const AdminLogin = () => {
     setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Simulate API call - will be replaced with actual authentication
-    setTimeout(() => {
-      // For demo, accept any email/password combo
-      if (formData.email && formData.password) {
-        setLoading(false);
-        // Navigate to admin dashboard
-        navigate('/admin');
-      } else {
-        setLoading(false);
-        setError('Please enter your credentials');
-      }
-    }, 1500);
+    try {
+      await authService.adminLogin(formData.email, formData.password);
+      navigate('/admin');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Admin login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,7 +52,6 @@ const AdminLogin = () => {
             transition={{ duration: 0.5 }}
           >
             <Card variant="bordered" padding="lg" className="shadow-strong">
-              {/* Header */}
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Shield className="w-8 h-8 text-primary" />
@@ -64,20 +60,18 @@ const AdminLogin = () => {
                 <p className="text-text-secondary mt-2">Access the SIPP admin dashboard</p>
               </div>
 
-              {/* Error Message */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20"
+                  className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2"
                 >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   {error}
                 </motion.div>
               )}
 
-              {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-primary-dark mb-1.5">
                     Email Address
@@ -96,7 +90,6 @@ const AdminLogin = () => {
                   </div>
                 </div>
 
-                {/* Password */}
                 <div>
                   <label className="block text-sm font-medium text-primary-dark mb-1.5">
                     Password
@@ -122,7 +115,6 @@ const AdminLogin = () => {
                   </div>
                 </div>
 
-                {/* Remember Me */}
                 <div className="flex items-center justify-between">
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
@@ -134,12 +126,8 @@ const AdminLogin = () => {
                     />
                     <span className="text-sm text-text-secondary">Remember me</span>
                   </label>
-                  <Link to="/admin/forgot-password" className="text-sm text-primary hover:underline">
-                    Forgot Password?
-                  </Link>
                 </div>
 
-                {/* Submit Button */}
                 <Button
                   type="submit"
                   variant="primary"
@@ -152,16 +140,12 @@ const AdminLogin = () => {
                 </Button>
               </form>
 
-              {/* Footer */}
               <div className="mt-6 text-center">
                 <p className="text-sm text-text-secondary">
                   Return to{' '}
                   <Link to="/login" className="text-primary font-medium hover:underline">
                     Student/Company Login
                   </Link>
-                </p>
-                <p className="text-xs text-text-muted mt-2">
-                  Default admin credentials: admin@sipp / sippadmin
                 </p>
               </div>
             </Card>

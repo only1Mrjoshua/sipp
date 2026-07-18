@@ -1,61 +1,234 @@
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Building2, Clock, ArrowRight } from 'lucide-react';
+import { 
+  MapPin, Building2, Clock, ArrowRight, User, AlertCircle, 
+  Briefcase, Tag, GraduationCap 
+} from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const StudentInternships = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [profileComplete, setProfileComplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
+  const [hasSkills, setHasSkills] = useState(false);
+  const [hasInterests, setHasInterests] = useState(false);
+  const [internships, setInternships] = useState([]);
+  const [user, setUser] = useState(null);
 
-  const internships = [
-    {
-      id: 1,
-      title: 'Frontend Developer Intern',
-      company: 'TechCorp Inc.',
-      location: 'Lagos, Nigeria',
-      type: 'Full-time',
-      duration: '6 months',
-      match: '95%',
-      tags: ['React', 'JavaScript', 'CSS'],
-    },
-    {
-      id: 2,
-      title: 'Data Analyst Intern',
-      company: 'DataVision Ltd.',
-      location: 'Abuja, Nigeria',
-      type: 'Part-time',
-      duration: '4 months',
-      match: '88%',
-      tags: ['Python', 'SQL', 'Tableau'],
-    },
-    {
-      id: 3,
-      title: 'UI/UX Design Intern',
-      company: 'Creative Studios',
-      location: 'Remote',
-      type: 'Full-time',
-      duration: '6 months',
-      match: '82%',
-      tags: ['Figma', 'UI Design', 'UX Research'],
-    },
-  ];
+  useEffect(() => {
+    const userData = authService.getCurrentUser();
+    setUser(userData);
+    if (userData) {
+      checkProfileCompletion(userData);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const checkProfileCompletion = async (userData) => {
+    setLoading(true);
+    try {
+      // Check profile completion status
+      const response = await api.get(`/api/students/profile/completion/${userData.id}`);
+      setProfileComplete(response.data.is_complete);
+      setMissingFields(response.data.missing_fields);
+      
+      // Check if student has skills and interests
+      const profileResponse = await api.get(`/api/students/profile/${userData.id}`);
+      const profile = profileResponse.data;
+      
+      const hasSkills = profile.skills && profile.skills.length > 0;
+      const hasInterests = profile.interests && profile.interests.length > 0;
+      
+      setHasSkills(hasSkills);
+      setHasInterests(hasInterests);
+      
+      if (response.data.is_complete && hasSkills && hasInterests) {
+        // Fetch internships if profile is complete with skills and interests
+        await fetchInternships();
+      }
+    } catch (error) {
+      console.error('Error checking profile completion:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInternships = async () => {
+    try {
+      // TODO: Replace with actual API endpoint when ready
+      // const response = await api.get('/api/internships/matched');
+      // setInternships(response.data);
+      
+      // For now, show empty state since no backend endpoint exists yet
+      setInternships([]);
+    } catch (error) {
+      console.error('Error fetching internships:', error);
+      setInternships([]);
+    }
+  };
 
   const handleApply = (internshipId) => {
     navigate(`/student/apply/${internshipId}`);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-text-secondary">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show profile completion message if profile is not complete
+  if (!profileComplete) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <Card variant="bordered" padding="lg" className="text-center">
+          <div className="w-20 h-20 bg-accent-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-10 h-10 text-accent-yellow" />
+          </div>
+          <h2 className="text-2xl font-bold text-primary-dark mb-3">
+            Complete Your Profile
+          </h2>
+          <p className="text-text-secondary mb-4">
+            To get matched with internship opportunities based on your skills and interests, 
+            please complete your profile information.
+          </p>
+          <p className="text-sm text-text-muted mb-4">
+            The system uses your <strong>skills</strong> and <strong>interests</strong> to find 
+            the best internships for you.
+          </p>
+          {missingFields.length > 0 && (
+            <div className="bg-background-light rounded-xl p-4 mb-6 text-left">
+              <p className="text-sm font-medium text-primary-dark mb-2">Missing Information:</p>
+              <ul className="text-sm text-text-secondary space-y-1">
+                {missingFields.map((field, index) => (
+                  <li key={index} className="flex items-center">
+                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
+                    {field.replace(/([A-Z])/g, ' $1').trim()}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Button 
+            variant="primary" 
+            size="lg" 
+            icon={<User className="w-5 h-5" />}
+            onClick={() => navigate('/student/profile')}
+          >
+            Go to Profile
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show message if student needs to add skills/interests
+  if (!hasSkills || !hasInterests) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <Card variant="bordered" padding="lg" className="text-center">
+          <div className="w-20 h-20 bg-accent-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Tag className="w-10 h-10 text-accent-yellow" />
+          </div>
+          <h2 className="text-2xl font-bold text-primary-dark mb-3">
+            Add Your Skills & Interests
+          </h2>
+          <p className="text-text-secondary mb-4">
+            To get personalized internship recommendations, you need to add your skills and interests to your profile.
+          </p>
+          <div className="bg-background-light rounded-xl p-4 mb-6 text-left">
+            <p className="text-sm font-medium text-primary-dark mb-2">You're missing:</p>
+            <ul className="text-sm text-text-secondary space-y-1">
+              {!hasSkills && (
+                <li className="flex items-center">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
+                  Skills (e.g., React, Python, Java)
+                </li>
+              )}
+              {!hasInterests && (
+                <li className="flex items-center">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
+                  Interests (e.g., Web Development, Data Science, UI/UX)
+                </li>
+              )}
+            </ul>
+          </div>
+          <Button 
+            variant="primary" 
+            size="lg" 
+            icon={<User className="w-5 h-5" />}
+            onClick={() => navigate('/student/profile')}
+          >
+            Update Profile
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show empty state if no internships available
+  if (internships.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <Card variant="bordered" padding="lg" className="text-center">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Briefcase className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-primary-dark mb-3">
+            No Internships Available
+          </h2>
+          <p className="text-text-secondary mb-4">
+            There are currently no internships matching your skills and interests. 
+            Companies haven't posted any internships that match your profile yet.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.reload()}
+            >
+              Refresh
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              icon={<User className="w-4 h-4" />}
+              onClick={() => navigate('/student/profile')}
+            >
+              Update Profile
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show internships if available
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Internships</h1>
-        <p className="text-text-secondary">Browse internship opportunities matched for you</p>
+        <p className="text-text-secondary">
+          Internships matched based on your skills and interests
+        </p>
       </div>
 
       {/* Internship Cards */}
       <div className="space-y-4">
         {internships.map((internship, index) => (
           <motion.div
-            key={index}
+            key={internship.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
@@ -72,7 +245,7 @@ const StudentInternships = () => {
                       </p>
                     </div>
                     <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap flex-shrink-0">
-                      {internship.match} Match
+                      {internship.match}% Match
                     </span>
                   </div>
                   
@@ -91,7 +264,7 @@ const StudentInternships = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {internship.tags.map((tag, i) => (
+                    {internship.tags && internship.tags.map((tag, i) => (
                       <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-xs rounded-full">
                         {tag}
                       </span>

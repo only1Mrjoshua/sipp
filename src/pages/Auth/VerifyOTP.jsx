@@ -1,23 +1,59 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Shield, Mail } from 'lucide-react';
+import { ArrowRight, Shield, Mail, AlertCircle } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { authService } from '../../services/authService';
 
 const VerifyOTP = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role') || 'student';
+  const emailFromUrl = searchParams.get('email') || '';
+  
+  // Get email from URL first, then localStorage, then fallback
+  const [userEmail, setUserEmail] = useState('');
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [countdown, setCountdown] = useState(60);
   const inputRefs = useRef([]);
+
+  // Set email on component mount
+  useEffect(() => {
+    const storedEmail = localStorage.getItem('pending_email') || '';
+    const email = emailFromUrl || storedEmail;
+    setUserEmail(email);
+    
+    // If no email found, try to get from localStorage again after a moment
+    if (!email) {
+      const retryEmail = localStorage.getItem('pending_email');
+      if (retryEmail) {
+        setUserEmail(retryEmail);
+      }
+    }
+  }, [emailFromUrl]);
 
   useEffect(() => {
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
   }, []);
+
+  useEffect(() => {
+    let timer;
+    if (resendDisabled && countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    } else if (countdown === 0) {
+      setResendDisabled(false);
+      setCountdown(60);
+    }
+    return () => clearTimeout(timer);
+  }, [resendDisabled, countdown]);
 
   const handleChange = (index, value) => {
     if (!/^\d*$/.test(value)) return;
@@ -50,17 +86,60 @@ const VerifyOTP = () => {
     inputRefs.current[nextIndex]?.focus();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (role === 'company') {
-      navigate('/company');
-    } else {
-      navigate('/student');
+    const otpValue = otp.join('');
+    if (otpValue.length !== 6) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const email = userEmail || localStorage.getItem('pending_email') || '';
+      if (!email) {
+        setError('Email not found. Please try signing up again.');
+        setLoading(false);
+        return;
+      }
+
+      await authService.verifyOTP(email, otpValue);
+      setSuccess(true);
+      
+      // Clear pending email
+      localStorage.removeItem('pending_email');
+      
+      // Navigate based on role after 1.5 seconds
+      setTimeout(() => {
+        if (role === 'company') {
+          navigate('/company');
+        } else {
+          navigate('/student');
+        }
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Invalid or expired OTP. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleResend = () => {
-    console.log('OTP resent');
+  const handleResend = async () => {
+    setResendDisabled(true);
+    setCountdown(60);
+    setError('');
+
+    try {
+      const email = userEmail || localStorage.getItem('pending_email') || '';
+      if (!email) {
+        setError('Email not found. Please try signing up again.');
+        setResendDisabled(false);
+        return;
+      }
+      await authService.resendOTP(email);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to resend OTP. Please try again.');
+      setResendDisabled(false);
+    }
   };
 
   return (
@@ -81,13 +160,35 @@ const VerifyOTP = () => {
                 We've sent a 6-digit verification code to your email
               </p>
               <div className="flex items-center justify-center mt-2 text-xs text-text-secondary">
-                <Mail className="w-3 h-3 mr-1" />
-                <span>info@sipp.curriumx.online</span>
+                <Mail className="w-3 h-3 mr-1 flex-shrink-0" />
+                <span className="truncate max-w-[200px]">{userEmail || 'Loading email...'}</span>
               </div>
               <div className="mt-1 text-xs text-text-muted">
                 {role === 'company' ? 'Creating company account...' : 'Creating student account...'}
               </div>
             </div>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-status-success/10 text-status-success text-sm rounded-xl border border-status-success/20 flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4 flex-shrink-0" />
+                Email verified successfully! Redirecting...
+              </motion.div>
+            )}
 
             <form onSubmit={handleSubmit}>
               <div className="flex justify-center gap-2 mb-6">
@@ -113,6 +214,8 @@ const VerifyOTP = () => {
                 variant="primary"
                 size="md"
                 fullWidth
+                loading={loading}
+                disabled={otp.join('').length !== 6 || success}
                 icon={<ArrowRight className="w-4 h-4" />}
               >
                 Verify Account
@@ -124,11 +227,19 @@ const VerifyOTP = () => {
                 Didn't receive the code?{' '}
                 <button
                   onClick={handleResend}
-                  className="text-primary font-medium hover:underline transition-colors"
+                  disabled={resendDisabled || success}
+                  className={`text-primary font-medium hover:underline transition-colors ${
+                    resendDisabled || success ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   Resend
                 </button>
               </p>
+              {resendDisabled && (
+                <p className="text-xs text-text-muted mt-1">
+                  Resend available in {countdown}s
+                </p>
+              )}
             </div>
 
             <div className="mt-3 text-center">

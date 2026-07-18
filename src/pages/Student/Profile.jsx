@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Mail,
   Phone,
@@ -9,32 +10,81 @@ import {
   Edit2,
   Save,
   Camera,
-  X
+  X,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const StudentProfile = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState('');
   const [profileData, setProfileData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@university.edu',
-    phone: '+234 800 000 0000',
-    university: 'University of Lagos',
-    faculty: 'Faculty of Science',
-    department: 'Computer Science',
-    matricNumber: 'UNILAG/CS/2024/001',
-    level: '400L',
-    skills: ['React', 'JavaScript', 'CSS', 'Python', 'SQL', 'UI/UX'],
-    interests: ['Web Development', 'Data Science', 'AI/ML', 'Cloud Computing'],
-    careerAspiration: 'Full Stack Developer',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    university: '',
+    faculty: '',
+    department: '',
+    matricNumber: '',
+    level: '',
+    skills: [],
+    interests: [],
+    careerAspiration: '',
   });
 
   const [newSkill, setNewSkill] = useState('');
   const [newInterest, setNewInterest] = useState('');
+  const [user, setUser] = useState(null);
+
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    setFetching(true);
+    try {
+      const userData = authService.getCurrentUser();
+      setUser(userData);
+      
+      if (!userData) {
+        setFetching(false);
+        return;
+      }
+
+      const response = await api.get(`/api/students/profile/${userData.id}`);
+      const data = response.data;
+      
+      setProfileData({
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        university: data.university || '',
+        faculty: data.faculty || '',
+        department: data.department || '',
+        matricNumber: data.matricNumber || '',
+        level: data.level || '',
+        skills: data.skills || [],
+        interests: data.interests || [],
+        careerAspiration: data.careerAspiration || '',
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setError('Failed to load profile data');
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const handleSettingsClick = () => {
     navigate('/student/settings');
@@ -42,11 +92,14 @@ const StudentProfile = () => {
 
   const handleEditToggle = () => {
     setIsEditing(true);
+    setError('');
+    setSaveSuccess(false);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProfileData({ ...profileData, [name]: value });
+    setError('');
   };
 
   const handleAddSkill = () => {
@@ -83,17 +136,71 @@ const StudentProfile = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError('');
+    setSaveSuccess(false);
+
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('User not found. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      // Prepare data for API
+      const updateData = {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        university: profileData.university,
+        faculty: profileData.faculty,
+        department: profileData.department,
+        matricNumber: profileData.matricNumber,
+        level: profileData.level,
+        skills: profileData.skills,
+        interests: profileData.interests,
+        careerAspiration: profileData.careerAspiration,
+      };
+
+      await api.put(`/api/students/profile/${userData.id}`, updateData);
+      
+      setSaveSuccess(true);
       setIsEditing(false);
-    }, 1500);
+      
+      // Refresh profile data
+      await fetchProfile();
+      
+      // Show success for 3 seconds
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setError(error.response?.data?.detail || 'Failed to save profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
+    setError('');
+    // Refetch to reset any changes
+    fetchProfile();
   };
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-text-secondary">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full overflow-x-hidden">
@@ -119,13 +226,37 @@ const StudentProfile = () => {
         </div>
       </div>
 
+      {/* Success Message */}
+      {saveSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3 bg-status-success/10 text-status-success text-sm rounded-xl border border-status-success/20 flex items-center gap-2"
+        >
+          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+          Profile updated successfully!
+        </motion.div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3 bg-status-error/10 text-status-error text-sm rounded-xl border border-status-error/20 flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </motion.div>
+      )}
+
       {/* Profile Header */}
       <Card variant="bordered" padding="lg" className="mb-8">
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 min-w-0">
           <div className="relative flex-shrink-0">
             <div className="w-24 h-24 bg-primary-light rounded-full flex items-center justify-center">
               <span className="text-3xl font-bold text-primary-dark">
-                {profileData.firstName[0]}{profileData.lastName[0]}
+                {profileData.firstName[0]}{profileData.lastName[0] || '?'}
               </span>
             </div>
             {isEditing && (
@@ -163,7 +294,7 @@ const StudentProfile = () => {
                 {profileData.firstName} {profileData.lastName}
               </h2>
             )}
-            <p className="text-text-secondary">Computer Science Student</p>
+            <p className="text-text-secondary">{profileData.department || 'Student'}</p>
             <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-3 mt-3 text-sm w-full">
               {isEditing ? (
                 <>
@@ -175,6 +306,7 @@ const StudentProfile = () => {
                       value={profileData.email}
                       onChange={handleChange}
                       className="flex-1 min-w-0 w-full px-3 py-1 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      disabled
                     />
                   </div>
                   <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
@@ -236,7 +368,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium break-words">{profileData.university}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.university || 'Not set'}</p>
               )}
             </div>
             <div>
@@ -250,7 +382,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium break-words">{profileData.faculty}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.faculty || 'Not set'}</p>
               )}
             </div>
             <div>
@@ -264,7 +396,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium break-words">{profileData.department}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.department || 'Not set'}</p>
               )}
             </div>
             <div>
@@ -278,7 +410,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium break-words">{profileData.matricNumber}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.matricNumber || 'Not set'}</p>
               )}
             </div>
             <div>
@@ -290,6 +422,7 @@ const StudentProfile = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 >
+                  <option value="">Select Level</option>
                   <option value="100L">100L</option>
                   <option value="200L">200L</option>
                   <option value="300L">300L</option>
@@ -297,7 +430,7 @@ const StudentProfile = () => {
                   <option value="500L">500L</option>
                 </select>
               ) : (
-                <p className="text-text-secondary font-medium">{profileData.level}</p>
+                <p className="text-text-secondary font-medium">{profileData.level || 'Not set'}</p>
               )}
             </div>
           </div>
@@ -313,19 +446,23 @@ const StudentProfile = () => {
             <div>
               <p className="text-sm text-text-muted">Skills</p>
               <div className="flex flex-wrap gap-2 mt-1">
-                {profileData.skills.map((skill, i) => (
-                  <span key={i} className="max-w-full break-words px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full flex items-center gap-1">
-                    {skill}
-                    {isEditing && (
-                      <button
-                        onClick={() => handleRemoveSkill(skill)}
-                        className="ml-1 hover:text-status-error transition-colors shrink-0"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </span>
-                ))}
+                {profileData.skills && profileData.skills.length > 0 ? (
+                  profileData.skills.map((skill, i) => (
+                    <span key={i} className="max-w-full break-words px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full flex items-center gap-1">
+                      {skill}
+                      {isEditing && (
+                        <button
+                          onClick={() => handleRemoveSkill(skill)}
+                          className="ml-1 hover:text-status-error transition-colors shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-sm text-text-muted italic">No skills added yet</p>
+                )}
               </div>
               {isEditing && (
                 <div className="flex flex-col sm:flex-row gap-2 mt-2">
@@ -351,19 +488,23 @@ const StudentProfile = () => {
             <div>
               <p className="text-sm text-text-muted">Interests</p>
               <div className="flex flex-wrap gap-2 mt-1">
-                {profileData.interests.map((interest, i) => (
-                  <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
-                    {interest}
-                    {isEditing && (
-                      <button
-                        onClick={() => handleRemoveInterest(interest)}
-                        className="ml-1 hover:text-status-error transition-colors shrink-0"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </span>
-                ))}
+                {profileData.interests && profileData.interests.length > 0 ? (
+                  profileData.interests.map((interest, i) => (
+                    <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
+                      {interest}
+                      {isEditing && (
+                        <button
+                          onClick={() => handleRemoveInterest(interest)}
+                          className="ml-1 hover:text-status-error transition-colors shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-sm text-text-muted italic">No interests added yet</p>
+                )}
               </div>
               {isEditing && (
                 <div className="flex flex-col sm:flex-row gap-2 mt-2">
@@ -397,7 +538,7 @@ const StudentProfile = () => {
                   className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
                 />
               ) : (
-                <p className="text-text-secondary font-medium break-words">{profileData.careerAspiration}</p>
+                <p className="text-text-secondary font-medium break-words">{profileData.careerAspiration || 'Not set'}</p>
               )}
             </div>
           </div>
