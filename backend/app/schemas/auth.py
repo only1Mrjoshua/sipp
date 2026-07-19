@@ -11,6 +11,10 @@ class LoginResponse(BaseModel):
     role: str
     user_id: str
     email: str
+    first_name: str = ""
+    last_name: str = ""
+    profile_picture: str = ""
+    company_name: str = ""
 
 class OTPRequest(BaseModel):
     email: EmailStr

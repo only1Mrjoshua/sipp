@@ -22,6 +22,10 @@ export const authService = {
         id: response.data.user_id,
         email: response.data.email,
         role: response.data.role,
+        firstName: response.data.first_name || response.data.firstName || '',
+        lastName: response.data.last_name || response.data.lastName || '',
+        profilePicture: response.data.profile_picture || response.data.profilePicture || '',
+        companyName: response.data.company_name || response.data.companyName || '',
       }));
     }
     return response.data;
@@ -36,6 +40,9 @@ export const authService = {
         id: response.data.user_id,
         email: response.data.email,
         role: response.data.role,
+        firstName: response.data.first_name || response.data.firstName || '',
+        lastName: response.data.last_name || response.data.lastName || '',
+        profilePicture: response.data.profile_picture || response.data.profilePicture || '',
       }));
     }
     return response.data;
@@ -58,7 +65,6 @@ export const authService = {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
     localStorage.removeItem('pending_email');
-    // Redirect to login
     window.location.href = '/login';
   },
 
@@ -73,11 +79,9 @@ export const authService = {
     const token = localStorage.getItem('access_token');
     if (!token) return false;
     
-    // Optional: Check if token is expired (you can decode and check exp)
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (payload.exp && payload.exp * 1000 < Date.now()) {
-        // Token expired
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
         return false;
@@ -92,5 +96,16 @@ export const authService = {
   // Get token
   getToken: () => {
     return localStorage.getItem('access_token');
+  },
+
+  // Update user data in localStorage
+  updateUser: (userData) => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...userData };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    }
+    return null;
   }
 };

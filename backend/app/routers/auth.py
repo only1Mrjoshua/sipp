@@ -59,7 +59,7 @@ async def register_company(company_data: CompanyCreate, background_tasks: Backgr
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest):
     """
-    Login user. Returns JWT token with role information.
+    Login user. Returns JWT token with role information and user details.
     """
     user, error = await UserService.authenticate_user(login_data)
     if error:
@@ -76,12 +76,22 @@ async def login(login_data: LoginRequest):
     }
     access_token = create_access_token(token_data)
     
+    # Get user details
+    first_name = user.get("firstName", "") or user.get("first_name", "")
+    last_name = user.get("lastName", "") or user.get("last_name", "")
+    profile_picture = user.get("profilePicture", "") or user.get("profile_picture", "")
+    company_name = user.get("companyName", "") or user.get("company_name", "")
+    
     return LoginResponse(
         access_token=access_token,
         token_type="bearer",
         role=user["role"],
         user_id=str(user["_id"]),
-        email=user["email"]
+        email=user["email"],
+        first_name=first_name,
+        last_name=last_name,
+        profile_picture=profile_picture,
+        company_name=company_name
     )
 
 @router.post("/verify-otp", response_model=OTPResponse)
@@ -158,5 +168,8 @@ async def admin_login(login_data: LoginRequest):
         token_type="bearer",
         role=user["role"],
         user_id=str(user["_id"]),
-        email=user["email"]
+        email=user["email"],
+        first_name=user.get("firstName", "") or user.get("first_name", ""),
+        last_name=user.get("lastName", "") or user.get("last_name", ""),
+        profile_picture=user.get("profilePicture", "") or user.get("profile_picture", "")
     )

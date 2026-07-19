@@ -6,10 +6,6 @@ import HowItWorks from '../../components/landing/HowItWorks';
 import FAQ from '../../components/landing/FAQ';
 import CTA from '../../components/landing/CTA';
 
-/**
- * Home Page - Landing Page
- * All sections are organized and imported here
- */
 const Home = () => {
   return (
     <div className="overflow-x-hidden">
