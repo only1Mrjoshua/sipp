@@ -16,25 +16,34 @@ import {
   X,
   Plus,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Award,
+  Loader
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Container from '../../components/common/Container';
+import SkillSelector from '../../components/common/SkillSelector';
 import api from '../../services/api';
 import { authService } from '../../services/authService';
+import { 
+  getInternshipTypesForIndustry,
+  getSkillsRequiredForIndustry,
+  getSkillsOfferedForIndustry,
+  getBenefitsForIndustry
+} from '../../data/industryData';
 
 const CreateInternship = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [companyProfile, setCompanyProfile] = useState({
-    companyName: '',
-    skillsRequired: [],
-    skillsOffered: [],
-    benefits: [],
-  });
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [availableTypes, setAvailableTypes] = useState([]);
+  const [availableSkillsRequired, setAvailableSkillsRequired] = useState([]);
+  const [availableSkillsOffered, setAvailableSkillsOffered] = useState([]);
+  const [availableBenefits, setAvailableBenefits] = useState([]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -50,10 +59,6 @@ const CreateInternship = () => {
     benefits: [],
   });
 
-  const [newSkillToAdd, setNewSkillToAdd] = useState('');
-  const [newSkillToOffer, setNewSkillToOffer] = useState('');
-  const [newBenefit, setNewBenefit] = useState('');
-
   const internshipTypes = ['Full-time', 'Part-time', 'Remote', 'Hybrid'];
   const durationOptions = ['3 months', '4 months', '6 months', '9 months', '12 months'];
 
@@ -62,28 +67,45 @@ const CreateInternship = () => {
   }, []);
 
   const fetchCompanyProfile = async () => {
+    setLoading(true);
+    setError('');
     try {
       const userData = authService.getCurrentUser();
-      if (!userData) return;
+      if (!userData) {
+        setError('Please login to create an internship');
+        setLoading(false);
+        return;
+      }
 
+      // Fetch company profile
       const response = await api.get(`/api/companies/profile/${userData.id}`);
-      const data = response.data;
-      
-      setCompanyProfile({
-        companyName: data.companyName || '',
-        skillsRequired: data.skillsRequired || [],
-        skillsOffered: data.skillsOffered || [],
-        benefits: data.benefits || [],
-      });
+      const profile = response.data;
+      setCompanyProfile(profile);
 
+      // Set aboutCompany from profile
       setFormData(prev => ({
         ...prev,
-        skillsRequired: data.skillsRequired || [],
-        skillsOffered: data.skillsOffered || [],
-        benefits: data.benefits || [],
+        aboutCompany: profile.aboutCompany || profile.companyName || '',
+        location: profile.city && profile.state ? `${profile.city}, ${profile.state}` : prev.location
       }));
+
+      // Load industry-based data
+      if (profile.industry) {
+        const types = getInternshipTypesForIndustry(profile.industry);
+        const skillsReq = getSkillsRequiredForIndustry(profile.industry);
+        const skillsOff = getSkillsOfferedForIndustry(profile.industry);
+        const benefits = getBenefitsForIndustry(profile.industry);
+
+        setAvailableTypes(types);
+        setAvailableSkillsRequired(skillsReq);
+        setAvailableSkillsOffered(skillsOff);
+        setAvailableBenefits(benefits);
+      }
     } catch (error) {
       console.error('Error fetching company profile:', error);
+      setError(error.response?.data?.detail || 'Failed to load company profile');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,163 +115,106 @@ const CreateInternship = () => {
     setError('');
   };
 
-  const handleAddSkill = () => {
-    if (newSkillToAdd.trim() && !formData.skillsRequired.includes(newSkillToAdd.trim())) {
-      setFormData({
-        ...formData,
-        skillsRequired: [...formData.skillsRequired, newSkillToAdd.trim()],
-      });
-      setNewSkillToAdd('');
-    }
+  const handleSkillsRequiredChange = (skills) => {
+    setFormData({ ...formData, skillsRequired: skills });
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setFormData({
-      ...formData,
-      skillsRequired: formData.skillsRequired.filter(skill => skill !== skillToRemove),
-    });
+  const handleSkillsOfferedChange = (skills) => {
+    setFormData({ ...formData, skillsOffered: skills });
   };
 
-  const handleAddOfferedSkill = () => {
-    if (newSkillToOffer.trim() && !formData.skillsOffered.includes(newSkillToOffer.trim())) {
-      setFormData({
-        ...formData,
-        skillsOffered: [...formData.skillsOffered, newSkillToOffer.trim()],
-      });
-      setNewSkillToOffer('');
-    }
-  };
-
-  const handleRemoveOfferedSkill = (skillToRemove) => {
-    setFormData({
-      ...formData,
-      skillsOffered: formData.skillsOffered.filter(skill => skill !== skillToRemove),
-    });
-  };
-
-  const handleAddBenefit = () => {
-    if (newBenefit.trim() && !formData.benefits.includes(newBenefit.trim())) {
-      setFormData({
-        ...formData,
-        benefits: [...formData.benefits, newBenefit.trim()],
-      });
-      setNewBenefit('');
-    }
-  };
-
-  const handleRemoveBenefit = (benefitToRemove) => {
-    setFormData({
-      ...formData,
-      benefits: formData.benefits.filter(benefit => benefit !== benefitToRemove),
-    });
+  const handleBenefitsChange = (benefits) => {
+    setFormData({ ...formData, benefits: benefits });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setError('');
 
     // Validation
-    if (!formData.title?.trim()) {
+    if (!formData.title.trim()) {
       setError('Please enter an internship title');
-      setLoading(false);
+      setSubmitting(false);
       return;
     }
-    if (!formData.location?.trim()) {
+    if (!formData.location.trim()) {
       setError('Please enter a location');
-      setLoading(false);
+      setSubmitting(false);
       return;
     }
-    if (!formData.aboutRole?.trim()) {
-      setError('Please describe the role');
-      setLoading(false);
+    if (!formData.type) {
+      setError('Please select an internship type');
+      setSubmitting(false);
       return;
     }
-    if (!formData.aboutCompany?.trim()) {
-      setError('Please describe your company');
-      setLoading(false);
-      return;
-    }
-    if (!formData.applicationDeadline) {
-      setError('Please set an application deadline');
-      setLoading(false);
+    if (!formData.duration) {
+      setError('Please select a duration');
+      setSubmitting(false);
       return;
     }
     if (!formData.spotsAvailable || parseInt(formData.spotsAvailable) < 1) {
       setError('Please enter a valid number of spots');
-      setLoading(false);
+      setSubmitting(false);
+      return;
+    }
+    if (!formData.aboutRole.trim()) {
+      setError('Please describe the role');
+      setSubmitting(false);
+      return;
+    }
+    if (!formData.applicationDeadline) {
+      setError('Please set an application deadline');
+      setSubmitting(false);
       return;
     }
 
-    // Prepare payload - ensure all fields match backend
-    const payload = {
-      title: formData.title.trim(),
-      location: formData.location.trim(),
-      type: formData.type,
-      duration: formData.duration,
-      aboutRole: formData.aboutRole.trim(),
-      aboutCompany: formData.aboutCompany.trim(),
-      applicationDeadline: formData.applicationDeadline,
-      spotsAvailable: parseInt(formData.spotsAvailable),
-      skillsRequired: formData.skillsRequired || [],
-      skillsOffered: formData.skillsOffered || [],
-      benefits: formData.benefits || [],
-    };
-
     try {
-      const response = await api.post('/api/internships/create', payload);
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        setError('Please login to create an internship');
+        setSubmitting(false);
+        return;
+      }
+
+      const submitData = {
+        ...formData,
+        aboutCompany: formData.aboutCompany || companyProfile?.companyName || '',
+        spotsAvailable: parseInt(formData.spotsAvailable),
+        skillsRequired: formData.skillsRequired || [],
+        skillsOffered: formData.skillsOffered || [],
+        benefits: formData.benefits || [],
+      };
+
+      await api.post('/api/internships/create', submitData);
       setSuccess(true);
       setTimeout(() => {
         navigate('/company/internships');
       }, 2000);
     } catch (error) {
-      // Enhanced error logging
-      console.error('Full error object:', error);
-      console.error('Error response:', error.response);
-      alert(JSON.stringify(error.response.data.detail, null, 2));
-      
-      // Display the actual error message from the backend
-      if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        
-        // If detail is an array (validation errors from Pydantic)
-        if (Array.isArray(detail)) {
-          // Extract the error message from each validation error
-          const errorMessages = detail
-            .map(err => {
-              // Get the field name
-              let field = 'Unknown field';
-              if (err.loc) {
-                // Pydantic puts the field name in loc array
-                field = err.loc[err.loc.length - 1];
-              }
-              const msg = err.msg || err.message || 'Invalid value';
-              return `${field}: ${msg}`;
-            })
-            .join('. ');
-          setError(errorMessages);
-        } 
-        // If detail is a string
-        else if (typeof detail === 'string') {
-          setError(detail);
-        } 
-        // If detail is an object
-        else if (typeof detail === 'object') {
-          setError(detail.msg || detail.message || JSON.stringify(detail));
-        } 
-        else {
-          setError('Failed to create internship. Please check your input.');
-        }
-      } else {
-        setError(error.message || 'Failed to create internship. Please try again.');
-      }
-      setLoading(false);
+      console.error('Error creating internship:', error);
+      setError(error.response?.data?.detail || 'Failed to create internship. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <Container className="py-8 max-w-4xl">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="mt-4 text-text-secondary">Loading...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
   if (success) {
     return (
-      <Container className="py-12">
+      <Container className="py-12 max-w-4xl">
         <Card variant="bordered" padding="lg" className="max-w-md mx-auto text-center">
           <div className="w-20 h-20 bg-status-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-10 h-10 text-status-success" />
@@ -266,6 +231,7 @@ const CreateInternship = () => {
 
   return (
     <Container className="py-8 max-w-4xl">
+      {/* Back Button */}
       <button
         onClick={() => navigate('/company/internships')}
         className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
@@ -276,7 +242,12 @@ const CreateInternship = () => {
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Create Internship</h1>
-        <p className="text-text-secondary">Post a new internship opportunity for students</p>
+        <p className="text-text-secondary">Post a new internship opportunity</p>
+        {companyProfile?.industry && (
+          <p className="text-sm text-text-muted mt-1">
+            Industry: <span className="font-medium text-primary">{companyProfile.industry}</span>
+          </p>
+        )}
       </div>
 
       {error && (
@@ -302,15 +273,35 @@ const CreateInternship = () => {
               <label className="block text-sm font-medium text-primary-dark mb-1.5">
                 Internship Title <span className="text-status-error">*</span>
               </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                placeholder="e.g. Frontend Developer Intern"
-                required
-              />
+              {availableTypes.length > 0 ? (
+                <>
+                  <select
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
+                    required
+                  >
+                    <option value="">Select Internship Type</option>
+                    {availableTypes.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-text-muted mt-1">
+                    Recommended positions based on your industry
+                  </p>
+                </>
+              ) : (
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  placeholder="e.g. Frontend Developer Intern"
+                  required
+                />
+              )}
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -427,145 +418,133 @@ const CreateInternship = () => {
           </div>
         </Card>
 
-        {/* Skills Required */}
+        {/* Skills Required - Using SkillSelector */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
             <Tag className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Skills Required <span className="text-sm font-normal text-text-muted ml-2">(From your profile)</span>
+            Skills Required
+            <span className="text-sm font-normal text-text-muted ml-2">(Tap to select from industry recommendations)</span>
           </h3>
-          <div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {formData.skillsRequired.length === 0 ? (
-                <p className="text-sm text-text-muted italic">No skills added yet. Add skills below.</p>
-              ) : (
-                formData.skillsRequired.map((skill, i) => (
-                  <span key={i} className="max-w-full break-words px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full flex items-center gap-1">
-                    {skill}
-                    <button
-                      onClick={() => handleRemoveSkill(skill)}
-                      className="ml-1 hover:text-status-error transition-colors shrink-0"
-                      type="button"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))
-              )}
+          {availableSkillsRequired.length > 0 ? (
+            <SkillSelector
+              label=""
+              options={availableSkillsRequired}
+              selected={formData.skillsRequired}
+              onChange={handleSkillsRequiredChange}
+              placeholder="Search skills..."
+              emptyMessage="No skills available for your industry"
+              maxDisplay={8}
+            />
+          ) : (
+            <div>
+              <p className="text-sm text-text-muted mb-3">No industry-specific skills available. Add your own:</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={newSkillToAdd}
+                  onChange={(e) => setNewSkillToAdd(e.target.value)}
+                  placeholder="Add skill..."
+                  className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleAddSkill} 
+                  type="button"
+                  className="sm:w-auto w-full shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={newSkillToAdd}
-                onChange={(e) => setNewSkillToAdd(e.target.value)}
-                placeholder="Add skill..."
-                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
-              />
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleAddSkill} 
-                type="button"
-                className="sm:w-auto w-full shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+          )}
         </Card>
 
-        {/* Skills to be Offered */}
+        {/* Skills to be Offered - Using SkillSelector */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
             <GraduationCap className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Skills to be Offered <span className="text-sm font-normal text-text-muted ml-2">(From your profile)</span>
+            Skills to be Offered
+            <span className="text-sm font-normal text-text-muted ml-2">(Tap to select from industry recommendations)</span>
           </h3>
-          <div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {formData.skillsOffered.length === 0 ? (
-                <p className="text-sm text-text-muted italic">No skills added yet. Add skills below.</p>
-              ) : (
-                formData.skillsOffered.map((skill, i) => (
-                  <span key={i} className="max-w-full break-words px-3 py-1 bg-status-info/10 text-status-info text-sm rounded-full flex items-center gap-1">
-                    {skill}
-                    <button
-                      onClick={() => handleRemoveOfferedSkill(skill)}
-                      className="ml-1 hover:text-status-error transition-colors shrink-0"
-                      type="button"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))
-              )}
+          {availableSkillsOffered.length > 0 ? (
+            <SkillSelector
+              label=""
+              options={availableSkillsOffered}
+              selected={formData.skillsOffered}
+              onChange={handleSkillsOfferedChange}
+              placeholder="Search skills to offer..."
+              emptyMessage="No skills available for your industry"
+              maxDisplay={8}
+            />
+          ) : (
+            <div>
+              <p className="text-sm text-text-muted mb-3">No industry-specific skills available. Add your own:</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={newSkillToOffer}
+                  onChange={(e) => setNewSkillToOffer(e.target.value)}
+                  placeholder="Add skill to offer..."
+                  className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddOfferedSkill()}
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleAddOfferedSkill} 
+                  type="button"
+                  className="sm:w-auto w-full shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={newSkillToOffer}
-                onChange={(e) => setNewSkillToOffer(e.target.value)}
-                placeholder="Add skill to offer..."
-                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddOfferedSkill()}
-              />
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleAddOfferedSkill} 
-                type="button"
-                className="sm:w-auto w-full shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+          )}
         </Card>
 
-        {/* Benefits */}
+        {/* Benefits - Using SkillSelector */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Building2 className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Benefits Offered <span className="text-sm font-normal text-text-muted ml-2">(From your profile)</span>
+            <Award className="w-5 h-5 mr-2 text-primary shrink-0" />
+            Benefits Offered
+            <span className="text-sm font-normal text-text-muted ml-2">(Tap to select from industry recommendations)</span>
           </h3>
-          <div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {formData.benefits.length === 0 ? (
-                <p className="text-sm text-text-muted italic">No benefits added yet. Add benefits below.</p>
-              ) : (
-                formData.benefits.map((benefit, i) => (
-                  <span key={i} className="max-w-full break-words px-3 py-1 bg-status-success/10 text-status-success text-sm rounded-full flex items-center gap-1">
-                    {benefit}
-                    <button
-                      onClick={() => handleRemoveBenefit(benefit)}
-                      className="ml-1 hover:text-status-error transition-colors shrink-0"
-                      type="button"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))
-              )}
+          {availableBenefits.length > 0 ? (
+            <SkillSelector
+              label=""
+              options={availableBenefits}
+              selected={formData.benefits}
+              onChange={handleBenefitsChange}
+              placeholder="Search benefits..."
+              emptyMessage="No benefits available for your industry"
+              maxDisplay={8}
+            />
+          ) : (
+            <div>
+              <p className="text-sm text-text-muted mb-3">No industry-specific benefits available. Add your own:</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={newBenefit}
+                  onChange={(e) => setNewBenefit(e.target.value)}
+                  placeholder="Add benefit..."
+                  className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddBenefit()}
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleAddBenefit} 
+                  type="button"
+                  className="sm:w-auto w-full shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={newBenefit}
-                onChange={(e) => setNewBenefit(e.target.value)}
-                placeholder="Add benefit..."
-                className="min-w-0 flex-1 w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddBenefit()}
-              />
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleAddBenefit} 
-                type="button"
-                className="sm:w-auto w-full shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+          )}
         </Card>
 
         {/* Application Deadline */}
@@ -606,7 +585,7 @@ const CreateInternship = () => {
           <Button 
             variant="primary" 
             type="submit"
-            loading={loading}
+            loading={submitting}
             icon={<Send className="w-4 h-4" />}
             className="w-full sm:w-auto whitespace-nowrap"
           >

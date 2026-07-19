@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, AlertCircle, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import Container from '../../components/common/Container';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import SkillSelector from '../../components/common/SkillSelector';
 import { authService } from '../../services/authService';
+import { 
+  getAllDepartments, 
+  getSkillsForDepartment, 
+  getInterestsForDepartment, 
+  getCareersForDepartment 
+} from '../../data/departmentSkills';
 
 const StudentSignup = () => {
   const navigate = useNavigate();
@@ -13,6 +20,11 @@ const StudentSignup = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [availableSkills, setAvailableSkills] = useState([]);
+  const [availableInterests, setAvailableInterests] = useState([]);
+  const [availableCareers, setAvailableCareers] = useState([]);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -26,7 +38,35 @@ const StudentSignup = () => {
     password: '',
     confirmPassword: '',
     acceptTerms: false,
+    skills: [],
+    interests: [],
+    careerAspiration: '',
   });
+
+  // Update available options when department changes
+  useEffect(() => {
+    if (formData.department) {
+      const skills = getSkillsForDepartment(formData.department);
+      const interests = getInterestsForDepartment(formData.department);
+      const careers = getCareersForDepartment(formData.department);
+      
+      setAvailableSkills(skills);
+      setAvailableInterests(interests);
+      setAvailableCareers(careers);
+      
+      // Auto-select first career aspiration if available
+      if (careers.length > 0 && !formData.careerAspiration) {
+        setFormData(prev => ({
+          ...prev,
+          careerAspiration: careers[0]
+        }));
+      }
+    } else {
+      setAvailableSkills([]);
+      setAvailableInterests([]);
+      setAvailableCareers([]);
+    }
+  }, [formData.department]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -35,6 +75,29 @@ const StudentSignup = () => {
       [name]: type === 'checkbox' ? checked : value,
     });
     setError('');
+  };
+
+  // Keep __NONE__ in the state so the component knows it's selected
+  const handleSkillChange = (skills) => {
+    setFormData({ ...formData, skills });
+  };
+
+  // Keep __NONE__ in the state so the component knows it's selected
+  const handleInterestChange = (interests) => {
+    setFormData({ ...formData, interests });
+  };
+
+  const handleCareerChange = (e) => {
+    setFormData({ ...formData, careerAspiration: e.target.value });
+  };
+
+  // Clean data before submitting to backend - filter out __NONE__
+  const cleanDataForSubmission = (data) => {
+    const cleaned = { ...data };
+    // Filter out __NONE__ from skills and interests
+    cleaned.skills = data.skills.filter(s => s !== '__NONE__');
+    cleaned.interests = data.interests.filter(s => s !== '__NONE__');
+    return cleaned;
   };
 
   const handleSubmit = async (e) => {
@@ -57,11 +120,15 @@ const StudentSignup = () => {
       return;
     }
 
+    // Skills validation is not required - they can have none
+
     setLoading(true);
 
     try {
       const { confirmPassword, acceptTerms, ...registerData } = formData;
-      await authService.registerStudent(registerData);
+      // Clean the data before sending to backend
+      const cleanedData = cleanDataForSubmission(registerData);
+      await authService.registerStudent(cleanedData);
       
       // Save email to localStorage and pass to OTP page
       localStorage.setItem('pending_email', registerData.email);
@@ -73,10 +140,13 @@ const StudentSignup = () => {
     }
   };
 
+  // Get all departments for dropdown
+  const departments = getAllDepartments();
+
   return (
     <section className="min-h-screen py-20 bg-gradient-hero">
       <Container>
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -207,15 +277,18 @@ const StudentSignup = () => {
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
                         Department *
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="department"
                         value={formData.department}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                        placeholder="Computer Science"
+                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
                         required
-                      />
+                      >
+                        <option value="">Select Department</option>
+                        {departments.map((dept) => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
@@ -254,6 +327,73 @@ const StudentSignup = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Skills Section - Only show if department is selected */}
+                {formData.department && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-primary-dark mb-4">
+                      Skills & Career Preferences
+                    </h3>
+                    
+                    {/* Skills I Have - Allow None */}
+                    <div className="mb-6">
+                      <SkillSelector
+                        label="Skills I Have"
+                        options={availableSkills}
+                        selected={formData.skills}
+                        onChange={handleSkillChange}
+                        placeholder="Search skills..."
+                        emptyMessage="No skills available for this department yet"
+                        allowNone={true}
+                        noneLabel="None / I don't have any skills yet"
+                      />
+                    </div>
+
+                    {/* Skills I Want to Learn - Allow None */}
+                    <div className="mb-6">
+                      <SkillSelector
+                        label="Skills I Want to Learn"
+                        options={availableSkills}
+                        selected={formData.interests}
+                        onChange={handleInterestChange}
+                        placeholder="Search skills to learn..."
+                        emptyMessage="No skills available for this department yet"
+                        allowNone={true}
+                        noneLabel="None / I don't want to learn any specific skills yet"
+                      />
+                    </div>
+
+                    {/* Career Aspiration */}
+                    <div>
+                      <label className="block text-sm font-medium text-primary-dark mb-1.5">
+                        Career Aspiration *
+                      </label>
+                      {availableCareers.length > 0 ? (
+                        <select
+                          name="careerAspiration"
+                          value={formData.careerAspiration}
+                          onChange={handleCareerChange}
+                          className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
+                          required
+                        >
+                          <option value="">Select Career Path</option>
+                          {availableCareers.map((career) => (
+                            <option key={career} value={career}>{career}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          name="careerAspiration"
+                          value={formData.careerAspiration}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                          placeholder="e.g., Full Stack Developer"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Account Section */}
                 <div>

@@ -38,6 +38,9 @@ class StudentCreate(BaseModel):
     matricNumber: str
     level: str
     password: str
+    skills: Optional[List[str]] = []
+    interests: Optional[List[str]] = []
+    careerAspiration: Optional[str] = ""
 
 class StudentInDB(UserBase):
     firstName: str
@@ -48,6 +51,9 @@ class StudentInDB(UserBase):
     matricNumber: str
     level: str
     hashedPassword: str
+    skills: List[str] = []
+    interests: List[str] = []
+    careerAspiration: Optional[str] = ""
 
 class CompanyCreate(BaseModel):
     companyName: str
@@ -91,7 +97,10 @@ class UserOut(BaseModel):
     state: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
-    profilePicture: Optional[str] = None  # Add this field
+    profilePicture: Optional[str] = None
+    skills: List[str] = []
+    interests: List[str] = []
+    careerAspiration: Optional[str] = ""
     isVerified: bool
     isActive: bool
     createdAt: datetime

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -15,6 +15,9 @@ class LoginResponse(BaseModel):
     last_name: str = ""
     profile_picture: str = ""
     company_name: str = ""
+    skills: List[str] = []
+    interests: List[str] = []
+    career_aspiration: str = ""
 
 class OTPRequest(BaseModel):
     email: EmailStr

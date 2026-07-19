@@ -6,6 +6,7 @@ import Container from '../../components/common/Container';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { authService } from '../../services/authService';
+import { getAllIndustries } from '../../data/industryData';
 
 const CompanySignup = () => {
   const navigate = useNavigate();
@@ -26,6 +27,8 @@ const CompanySignup = () => {
     verifyCompany: false,
     acceptTerms: false,
   });
+
+  const industries = getAllIndustries();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -175,16 +178,13 @@ const CompanySignup = () => {
                         required
                       >
                         <option value="">Select Industry</option>
-                        <option value="Software">Software</option>
-                        <option value="Banking">Banking</option>
-                        <option value="Manufacturing">Manufacturing</option>
-                        <option value="Oil & Gas">Oil & Gas</option>
-                        <option value="Telecommunications">Telecommunications</option>
-                        <option value="Education">Education</option>
-                        <option value="Healthcare">Healthcare</option>
-                        <option value="Agriculture">Agriculture</option>
-                        <option value="Others">Others</option>
+                        {industries.map((industry) => (
+                          <option key={industry} value={industry}>{industry}</option>
+                        ))}
                       </select>
+                      <p className="text-xs text-text-muted mt-1">
+                        Your industry determines the internship types and skills available for your company
+                      </p>
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>

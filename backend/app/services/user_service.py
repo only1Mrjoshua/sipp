@@ -1,4 +1,5 @@
 from datetime import datetime
+from bson import ObjectId
 from app.core.database import get_users_collection
 from app.core.security import hash_password, verify_password
 from app.models.user import StudentCreate, CompanyCreate, AdminCreate
@@ -14,6 +15,11 @@ class UserService:
         if existing:
             return None, "Email already registered"
         
+        # Check if matric number exists
+        existing = await collection.find_one({"matricNumber": student_data.matricNumber})
+        if existing:
+            return None, "Matric number already registered"
+        
         hashed_pw = hash_password(student_data.password)
         user_doc = {
             "firstName": student_data.firstName,
@@ -26,6 +32,9 @@ class UserService:
             "matricNumber": student_data.matricNumber,
             "level": student_data.level,
             "hashedPassword": hashed_pw,
+            "skills": student_data.skills or [],
+            "interests": student_data.interests or [],
+            "careerAspiration": student_data.careerAspiration or "",
             "role": "student",
             "isVerified": False,
             "isActive": True,
@@ -120,6 +129,8 @@ class UserService:
 
     @staticmethod
     async def get_user_by_id(user_id: str):
-        from bson import ObjectId
         collection = await get_users_collection()
-        return await collection.find_one({"_id": ObjectId(user_id)})
+        try:
+            return await collection.find_one({"_id": ObjectId(user_id)})
+        except:
+            return None

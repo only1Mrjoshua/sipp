@@ -105,6 +105,14 @@ async def get_student_profile(user_id: str):
     user.pop("hashedPassword", None)
     user["_id"] = str(user["_id"])
     
+    # Ensure arrays are always returned
+    if "skills" not in user:
+        user["skills"] = []
+    if "interests" not in user:
+        user["interests"] = []
+    if "careerAspiration" not in user:
+        user["careerAspiration"] = ""
+    
     return user
 
 @router.put("/profile/{user_id}")
@@ -132,7 +140,11 @@ async def update_student_profile(user_id: str, profile_data: dict):
     update_data = {}
     for field in allowed_fields:
         if field in profile_data:
-            update_data[field] = profile_data[field]
+            # Handle arrays properly
+            if field in ["skills", "interests"]:
+                update_data[field] = profile_data[field] or []
+            else:
+                update_data[field] = profile_data[field]
     
     update_data["updatedAt"] = datetime.utcnow()
     
