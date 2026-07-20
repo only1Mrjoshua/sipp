@@ -61,6 +61,65 @@ DEPARTMENT_INDUSTRY_MAPPING = {
     "Architecture": ["Construction / Real Estate"],
 }
 
+
+# ============ SINGLE SOURCE OF TRUTH MATCHING FUNCTION ============
+
+def calculate_match(student, internship, company):
+    """
+    Returns the match percentage between a student and an internship.
+    This is the SINGLE source of truth for all matching logic.
+    
+    Args:
+        student (dict): Student user document
+        internship (dict): Internship document
+        company (dict): Company user document
+    
+    Returns:
+        int: Match score between 0 and 100
+    """
+    student_department = student.get("department", "")
+    student_skills = student.get("skills", [])
+    student_interests = student.get("interests", [])
+
+    company_industry = company.get("industry", "")
+
+    # Check department -> industry mapping
+    allowed_industries = DEPARTMENT_INDUSTRY_MAPPING.get(student_department, [])
+
+    if company_industry not in allowed_industries:
+        return 0
+
+    required_skills = internship.get("skillsRequired", [])
+    offered_skills = internship.get("skillsOffered", [])
+
+    skill_score = 0
+    interest_score = 0
+
+    if required_skills:
+        matched_skills = [
+            s for s in student_skills
+            if s.lower() in [r.lower() for r in required_skills]
+        ]
+
+        skill_score = (
+            len(matched_skills) / len(required_skills)
+        ) * 100
+
+    if offered_skills and student_interests:
+        matched_interests = [
+            i for i in student_interests
+            if i.lower() in [o.lower() for o in offered_skills]
+        ]
+
+        interest_score = (
+            len(matched_interests) / len(offered_skills)
+        ) * 20
+
+    return round(min(skill_score + interest_score, 100))
+
+
+# ============ ENDPOINTS ============
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
@@ -90,6 +149,7 @@ async def get_current_user(
         )
     
     return user
+
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_internship(
@@ -140,6 +200,7 @@ async def create_internship(
             detail=f"Failed to create internship: {str(e)}"
         )
 
+
 @router.get("/company")
 async def get_company_internships(user: dict = Depends(get_current_user)):
     """Get all internships for a company with applicant counts and matched student counts"""
@@ -159,8 +220,7 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
     # Get all active students (for matching calculation)
     all_students = await users_collection.find({
         "role": "student", 
-        "isActive": True,
-        "skills": {"$exists": True, "$ne": []}  # Only students with skills
+        "isActive": True
     }).to_list(None)
     
     result = []
@@ -172,31 +232,19 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
             "internshipId": internship_id
         })
         
-        # Count applications with status "Accepted" or "In Review"
-        accepted_count = await applications_collection.count_documents({
-            "internshipId": internship_id,
-            "status": {"$in": ["Accepted", "In Review"]}
+        # Get company
+        company = await users_collection.find_one({
+            "_id": ObjectId(internship["companyId"])
         })
-        
-        # ============ CALCULATE MATCHED STUDENTS ============
-        # Count students whose skills match this internship
-        matched_student_count = 0
-        required_skills = internship.get("skillsRequired", [])
-        
-        if required_skills:
-            for student in all_students:
-                student_skills = student.get("skills", [])
-                
-                # Check if student has at least one matching skill
-                # You can also use a threshold (e.g., at least 2 skills match)
-                has_matching_skill = any(skill in required_skills for skill in student_skills)
-                
-                if has_matching_skill:
-                    matched_student_count += 1
-        
-        # Get company name
-        company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
         company_name = company.get("companyName", "Your Company") if company else "Your Company"
+        
+        # ============ CALCULATE MATCHED STUDENTS USING calculate_match() ============
+        matched_count = 0
+        
+        for student in all_students:
+            score = calculate_match(student, internship, company)
+            if score > 0:
+                matched_count += 1
         
         result.append({
             "id": internship_id,
@@ -215,13 +263,13 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
             "status": internship.get("status", "Active"),
             "companyName": company_name,
             "applicants": applicant_count,
-            "matchCount": matched_student_count,  # Total students whose skills match
-            "acceptedCount": accepted_count,  # Students who applied and were accepted
+            "matchCount": matched_count,  # Students who match the internship
             "createdAt": internship.get("createdAt", datetime.utcnow()),
             "updatedAt": internship.get("updatedAt", datetime.utcnow())
         })
     
     return result
+
 
 @router.get("/student/matched")
 async def get_matched_internships(user: dict = Depends(get_current_user)):
@@ -233,75 +281,42 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
             detail="Only students can view matched internships"
         )
     
-    # Get student details
-    student_department = user.get("department", "")
-    student_skills = user.get("skills", [])
-    student_interests = user.get("interests", [])
+    # Get the full user profile from the database
+    users_collection = await get_users_collection()
+    full_user = await users_collection.find_one({"_id": ObjectId(user["_id"])})
     
-    print(f"🔍 Student department: {student_department}")
-    print(f"🔍 Student skills: {student_skills[:5]}..." if len(student_skills) > 5 else f"🔍 Student skills: {student_skills}")
-    
-    if not student_skills:
-        print("⚠️ No student skills found, returning empty list")
-        return []
+    if not full_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
     
     internships_collection = await get_internships_collection()
     applications_collection = await get_applications_collection()
-    users_collection = await get_users_collection()
-    
-    # Get the industries that match the student's department
-    matching_industries = DEPARTMENT_INDUSTRY_MAPPING.get(student_department, [])
-    print(f"📌 Matching industries for '{student_department}': {matching_industries}")
-    
-    # If no matching industries found, return empty list
-    if not matching_industries:
-        print(f"❌ No matching industries found for department: {student_department}")
-        return []
     
     # Get all active internships
     all_internships = await internships_collection.find({"status": "Active"}).to_list(None)
-    print(f"📊 Total active internships: {len(all_internships)}")
     
     matched_internships = []
-    skipped_count = 0
     
     for internship in all_internships:
-        internship_id = str(internship["_id"])
+        # Get the company
+        company = await users_collection.find_one({
+            "_id": ObjectId(internship["companyId"])
+        })
         
-        # Get the company to check their industry
-        company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
         if not company:
-            print(f"⚠️ Company not found for internship: {internship.get('title')}")
             continue
         
-        company_industry = company.get("industry", "")
-        company_name = company.get("companyName", "Unknown Company")
-        
-        # STEP 1: Check if the company's industry matches the student's department
-        if company_industry not in matching_industries:
-            skipped_count += 1
-            continue
-        
-        # STEP 2: Calculate match score based on skills
-        required_skills = internship.get("skillsRequired", [])
-        offered_skills = internship.get("skillsOffered", [])
-        
-        if not required_skills:
-            match_score = 0
-        else:
-            # Calculate skill match
-            matched_skills = [s for s in student_skills if s in required_skills]
-            skill_match = (len(matched_skills) / len(required_skills)) * 100 if required_skills else 0
-            
-            # Calculate interest match (bonus)
-            matched_interests = [i for i in student_interests if i in offered_skills] if student_interests else []
-            interest_bonus = (len(matched_interests) / len(offered_skills)) * 20 if offered_skills else 0
-            
-            # Final match score (capped at 100%)
-            match_score = min(skill_match + interest_bonus, 100)
+        # ============ USE calculate_match() ============
+        match_score = calculate_match(full_user, internship, company)
         
         # Only include if match score > 0
         if match_score > 0:
+            internship_id = str(internship["_id"])
+            company_name = company.get("companyName", "Unknown Company")
+            company_industry = company.get("industry", "")
+            
             # Count applicants for this internship
             applicant_count = await applications_collection.count_documents({
                 "internshipId": internship_id
@@ -330,7 +345,7 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
                 "status": internship.get("status", "Active"),
                 "companyName": company_name,
                 "companyIndustry": company_industry,
-                "match": round(match_score),
+                "match": match_score,
                 "applicants": applicant_count,
                 "matchCount": matched_count,
                 "createdAt": internship.get("createdAt", datetime.utcnow()),
@@ -340,10 +355,51 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
     # Sort by match score descending
     matched_internships.sort(key=lambda x: x["match"], reverse=True)
     
-    print(f"✅ Matched internships found: {len(matched_internships)}")
-    print(f"⏭️  Skipped internships (wrong industry): {skipped_count}")
-    
     return matched_internships
+
+
+@router.get("/{internship_id}/match")
+async def get_match_score(
+    internship_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Get the match score for a specific internship and student"""
+    
+    if user.get("role") != "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Students only."
+        )
+
+    internships_collection = await get_internships_collection()
+    users_collection = await get_users_collection()
+
+    internship = await internships_collection.find_one({
+        "_id": ObjectId(internship_id)
+    })
+
+    if not internship:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Internship not found."
+        )
+
+    company = await users_collection.find_one({
+        "_id": ObjectId(internship["companyId"])
+    })
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found."
+        )
+
+    score = calculate_match(user, internship, company)
+
+    return {
+        "match": score
+    }
+
 
 @router.get("/{internship_id}")
 async def get_internship(internship_id: str):
@@ -366,6 +422,7 @@ async def get_internship(internship_id: str):
     internship["companyName"] = company.get("companyName", "Unknown Company") if company else "Unknown Company"
     
     return internship
+
 
 # ============ UPDATE INTERNSHIP ENDPOINT ============
 @router.put("/{internship_id}")
@@ -431,6 +488,7 @@ async def update_internship(
         "internship_id": internship_id
     }
 
+
 # ============ DELETE INTERNSHIP ENDPOINT ============
 @router.delete("/{internship_id}")
 async def delete_internship(
@@ -478,6 +536,7 @@ async def delete_internship(
     await internships_collection.delete_one({"_id": ObjectId(internship_id)})
     
     return {"message": "Internship and all associated applications deleted successfully"}
+
 
 # ============ UPDATE INTERNSHIP STATUS ENDPOINT ============
 @router.put("/{internship_id}/status")

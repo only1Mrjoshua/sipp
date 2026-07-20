@@ -62,16 +62,25 @@ const ApplyNow = () => {
       const profileResponse = await api.get(`/api/students/profile/${userData.id}`);
       setStudentProfile(profileResponse.data);
 
-      // Calculate match score
-      const studentSkills = profileResponse.data.skills || [];
-      const internshipSkills = internshipResponse.data.skillsRequired || [];
-      
-      if (studentSkills.length > 0 && internshipSkills.length > 0) {
-        const matchedSkills = studentSkills.filter(skill => internshipSkills.includes(skill));
-        const score = Math.round((matchedSkills.length / internshipSkills.length) * 100);
-        setMatchScore(Math.min(score, 100));
-      } else {
-        setMatchScore(0);
+      // ============ USE BACKEND MATCH SCORE API ============
+      // Get match score from the backend - single source of truth
+      try {
+        const matchResponse = await api.get(`/api/internships/${id}/match`);
+        setMatchScore(matchResponse.data.match);
+        console.log('Match score from backend:', matchResponse.data.match);
+      } catch (matchError) {
+        console.error('Error fetching match score:', matchError);
+        // Fallback: calculate match score locally if the endpoint fails
+        const studentSkills = profileResponse.data.skills || [];
+        const internshipSkills = internshipResponse.data.skillsRequired || [];
+        
+        if (studentSkills.length > 0 && internshipSkills.length > 0) {
+          const matchedSkills = studentSkills.filter(skill => internshipSkills.includes(skill));
+          const score = Math.round((matchedSkills.length / internshipSkills.length) * 100);
+          setMatchScore(Math.min(score, 100));
+        } else {
+          setMatchScore(0);
+        }
       }
 
       // Check if student has already applied
@@ -238,7 +247,7 @@ const ApplyNow = () => {
                 </p>
               </div>
               <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-semibold rounded-full whitespace-nowrap shrink-0">
-                {matchScore || internship.match || 0}% Match
+                {matchScore}% Match
               </span>
             </div>
 
