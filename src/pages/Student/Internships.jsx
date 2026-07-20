@@ -64,7 +64,6 @@ const StudentInternships = () => {
   };
 
   const handleApply = (internship) => {
-    // Use the correct ID field - backend might use _id or id
     const internshipId = internship._id || internship.id;
     console.log('Navigating to apply with ID:', internshipId);
     if (internshipId) {
@@ -211,18 +210,23 @@ const StudentInternships = () => {
     );
   }
 
-  // Show internships if available - Original design
+  // Show internships if available
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-primary-dark">Internships</h1>
-        <p className="text-text-secondary">Browse internship opportunities matched for you</p>
+      {/* Header with count */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-dark">Internships</h1>
+          <p className="text-text-secondary">Browse internship opportunities matched for you</p>
+        </div>
+        <div className="text-sm text-text-muted font-medium bg-background-light px-4 py-2 rounded-full whitespace-nowrap">
+          {internships.length} Internship{internships.length !== 1 ? 's' : ''} found
+        </div>
       </div>
 
-      {/* Internship Cards - Original Design */}
+      {/* Internship Cards */}
       <div className="space-y-4">
         {internships.map((internship, index) => {
-          // Get the correct ID
           const internshipId = internship._id || internship.id;
           
           return (

@@ -11,6 +11,56 @@ router = APIRouter(prefix="/api/internships", tags=["Internships"])
 # Create security instance
 security = HTTPBearer()
 
+# Department to Industry Mapping - COMPLETE LIST
+DEPARTMENT_INDUSTRY_MAPPING = {
+    # ============ TECHNOLOGY & IT ============
+    "Computer Science": ["Information Technology / Software"],
+    "Software Engineering": ["Information Technology / Software"],
+    "Information Technology": ["Information Technology / Software"],
+    "Statistics": ["Information Technology / Software", "Finance / Banking", "Consulting"],
+    "Mathematics": ["Information Technology / Software", "Finance / Banking", "Consulting"],
+    
+    # ============ ENGINEERING ============
+    "Mechanical Engineering": ["Engineering / Manufacturing"],
+    "Electrical Engineering": ["Engineering / Manufacturing"],
+    "Civil Engineering": ["Engineering / Manufacturing", "Construction / Real Estate"],
+    "Petroleum Engineering": ["Engineering / Manufacturing"],
+    "Chemical Engineering": ["Engineering / Manufacturing"],
+    "Physics": ["Engineering / Manufacturing"],
+    
+    # ============ FINANCE & BUSINESS ============
+    "Accounting": ["Finance / Banking"],
+    "Economics": ["Finance / Banking", "Consulting"],
+    "Business Administration": ["Finance / Banking", "Consulting", "Marketing / Advertising", 
+                                "Education / Academia", "Hospitality / Tourism", 
+                                "Media / Entertainment", "Construction / Real Estate"],
+    
+    # ============ MARKETING & COMMUNICATION ============
+    "Marketing": ["Marketing / Advertising", "Media / Entertainment"],
+    "Mass Communication": ["Marketing / Advertising", "Media / Entertainment", 
+                           "Education / Academia", "Hospitality / Tourism"],
+    
+    # ============ HEALTHCARE & MEDICAL ============
+    "Medicine": ["Healthcare / Medical"],
+    "Nursing": ["Healthcare / Medical"],
+    "Pharmacy": ["Healthcare / Medical"],
+    "Biochemistry": ["Healthcare / Medical", "Agriculture / Agribusiness"],
+    "Microbiology": ["Healthcare / Medical", "Agriculture / Agribusiness"],
+    "Psychology": ["Healthcare / Medical", "Education / Academia", "Marketing / Advertising", "Consulting"],
+    
+    # ============ AGRICULTURE ============
+    "Agriculture": ["Agriculture / Agribusiness"],
+    
+    # ============ LEGAL ============
+    "Law": ["Legal"],
+    
+    # ============ EDUCATION ============
+    "Education": ["Education / Academia"],
+    
+    # ============ ARCHITECTURE ============
+    "Architecture": ["Construction / Real Estate"],
+}
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
@@ -152,7 +202,7 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
 
 @router.get("/student/matched")
 async def get_matched_internships(user: dict = Depends(get_current_user)):
-    """Get internships matched to a student based on skills with applicant counts"""
+    """Get internships matched to a student based on department AND skills matching"""
     
     if user.get("role") != "student":
         raise HTTPException(
@@ -160,26 +210,56 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
             detail="Only students can view matched internships"
         )
     
-    # Get student skills
+    # Get student details
+    student_department = user.get("department", "")
     student_skills = user.get("skills", [])
     student_interests = user.get("interests", [])
     
+    print(f"🔍 Student department: {student_department}")
+    print(f"🔍 Student skills: {student_skills[:5]}..." if len(student_skills) > 5 else f"🔍 Student skills: {student_skills}")
+    
     if not student_skills:
+        print("⚠️ No student skills found, returning empty list")
         return []
     
     internships_collection = await get_internships_collection()
     applications_collection = await get_applications_collection()
     users_collection = await get_users_collection()
     
+    # Get the industries that match the student's department
+    matching_industries = DEPARTMENT_INDUSTRY_MAPPING.get(student_department, [])
+    print(f"📌 Matching industries for '{student_department}': {matching_industries}")
+    
+    # If no matching industries found, return empty list
+    if not matching_industries:
+        print(f"❌ No matching industries found for department: {student_department}")
+        return []
+    
     # Get all active internships
     all_internships = await internships_collection.find({"status": "Active"}).to_list(None)
+    print(f"📊 Total active internships: {len(all_internships)}")
     
     matched_internships = []
+    skipped_count = 0
     
     for internship in all_internships:
         internship_id = str(internship["_id"])
         
-        # Calculate match score based on skills
+        # Get the company to check their industry
+        company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
+        if not company:
+            print(f"⚠️ Company not found for internship: {internship.get('title')}")
+            continue
+        
+        company_industry = company.get("industry", "")
+        company_name = company.get("companyName", "Unknown Company")
+        
+        # STEP 1: Check if the company's industry matches the student's department
+        if company_industry not in matching_industries:
+            skipped_count += 1
+            continue
+        
+        # STEP 2: Calculate match score based on skills
         required_skills = internship.get("skillsRequired", [])
         offered_skills = internship.get("skillsOffered", [])
         
@@ -199,10 +279,6 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
         
         # Only include if match score > 0
         if match_score > 0:
-            # Get company name
-            company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
-            company_name = company.get("companyName", "Unknown Company") if company else "Unknown Company"
-            
             # Count applicants for this internship
             applicant_count = await applications_collection.count_documents({
                 "internshipId": internship_id
@@ -230,6 +306,7 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
                 "benefits": internship.get("benefits", []),
                 "status": internship.get("status", "Active"),
                 "companyName": company_name,
+                "companyIndustry": company_industry,
                 "match": round(match_score),
                 "applicants": applicant_count,
                 "matchCount": matched_count,
@@ -239,6 +316,9 @@ async def get_matched_internships(user: dict = Depends(get_current_user)):
     
     # Sort by match score descending
     matched_internships.sort(key=lambda x: x["match"], reverse=True)
+    
+    print(f"✅ Matched internships found: {len(matched_internships)}")
+    print(f"⏭️  Skipped internships (wrong industry): {skipped_count}")
     
     return matched_internships
 
