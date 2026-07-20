@@ -10,7 +10,7 @@ import React from 'react';
  */
 const Container = ({
   children,
-  size = 'xl',
+  size = '2xl',
   className = '',
   noPadding = false,
   ...props
