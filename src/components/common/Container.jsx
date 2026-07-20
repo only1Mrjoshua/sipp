@@ -29,7 +29,7 @@ const Container = ({
       className={`
         mx-auto
         ${sizeClasses[size]}
-        ${noPadding ? '' : 'px-4 sm:px-6 lg:px-8'}
+        ${!noPadding && 'px-4 sm:px-6 lg:px-8'}
         ${className}
       `}
       {...props}
