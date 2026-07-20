@@ -142,7 +142,7 @@ async def create_internship(
 
 @router.get("/company")
 async def get_company_internships(user: dict = Depends(get_current_user)):
-    """Get all internships for a company with applicant counts"""
+    """Get all internships for a company with applicant counts and matched student counts"""
     
     if user.get("role") != "company":
         raise HTTPException(
@@ -156,7 +156,13 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
     
     internships = await internships_collection.find({"companyId": str(user["_id"])}).to_list(None)
     
-    # Get applicant counts for each internship
+    # Get all active students (for matching calculation)
+    all_students = await users_collection.find({
+        "role": "student", 
+        "isActive": True,
+        "skills": {"$exists": True, "$ne": []}  # Only students with skills
+    }).to_list(None)
+    
     result = []
     for internship in internships:
         internship_id = str(internship["_id"])
@@ -166,11 +172,27 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
             "internshipId": internship_id
         })
         
-        # Calculate matched students (applications with status "Accepted" or "In Review")
-        matched_count = await applications_collection.count_documents({
+        # Count applications with status "Accepted" or "In Review"
+        accepted_count = await applications_collection.count_documents({
             "internshipId": internship_id,
             "status": {"$in": ["Accepted", "In Review"]}
         })
+        
+        # ============ CALCULATE MATCHED STUDENTS ============
+        # Count students whose skills match this internship
+        matched_student_count = 0
+        required_skills = internship.get("skillsRequired", [])
+        
+        if required_skills:
+            for student in all_students:
+                student_skills = student.get("skills", [])
+                
+                # Check if student has at least one matching skill
+                # You can also use a threshold (e.g., at least 2 skills match)
+                has_matching_skill = any(skill in required_skills for skill in student_skills)
+                
+                if has_matching_skill:
+                    matched_student_count += 1
         
         # Get company name
         company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
@@ -193,7 +215,8 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
             "status": internship.get("status", "Active"),
             "companyName": company_name,
             "applicants": applicant_count,
-            "matchCount": matched_count,
+            "matchCount": matched_student_count,  # Total students whose skills match
+            "acceptedCount": accepted_count,  # Students who applied and were accepted
             "createdAt": internship.get("createdAt", datetime.utcnow()),
             "updatedAt": internship.get("updatedAt", datetime.utcnow())
         })
