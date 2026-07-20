@@ -139,7 +139,7 @@ const StudentsLayout = () => {
           }
         `}
       >
-        <div className="flex h-screen flex-col">
+        <div className="flex h-dvh flex-col overflow-hidden">
 
           {/* Logo */}
           <div className="flex h-20 items-center justify-between border-b border-border-light px-6 flex-shrink-0">
