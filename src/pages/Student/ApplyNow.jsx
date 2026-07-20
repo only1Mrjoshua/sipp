@@ -346,11 +346,11 @@ const ApplyNow = () => {
                 <span className="text-text-muted">Level</span>
                 <span className="font-medium text-primary-dark">{studentProfile?.level || ''}</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-text-muted">Skills</span>
-                <span className="font-medium text-primary-dark text-xs">
+              <div className="text-sm">
+                <p className="text-text-muted mb-1">Skills</p>
+                <p className="font-medium text-primary-dark text-xs break-words">
                   {studentProfile?.skills?.join(', ') || 'No skills added'}
-                </span>
+                </p>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">Career Aspiration</span>
