@@ -33,7 +33,7 @@ const Card = ({
     none: 'p-0',
     sm: 'p-4',
     md: 'p-6',
-    lg: 'p-8',
+    lg: 'p-5 sm:p-6 lg:p-8',
   };
 
   const hoverClasses = hoverable

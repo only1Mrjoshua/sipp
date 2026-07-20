@@ -193,7 +193,7 @@ const ApplyNow = () => {
   const isFull = spotsAvailable <= 0;
 
   return (
-    <Container className="py-6 px-2 sm:px-6">
+    <Container noPadding className="px-2 py-6">
       {/* Back Button */}
       <button
         onClick={() => navigate('/student/internships')}
