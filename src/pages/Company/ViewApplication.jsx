@@ -46,6 +46,7 @@ const ViewApplication = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [note, setNote] = useState('');
+  const [reviewStarted, setReviewStarted] = useState(false);
 
   useEffect(() => {
     fetchApplicationData();
@@ -77,15 +78,13 @@ const ViewApplication = () => {
         }
       }
 
-      // Get student details using the students endpoint
+      // Get student details
       if (appData.studentId) {
         try {
-          // Use the existing students/profile endpoint
           const studentResponse = await api.get(`/api/students/profile/${appData.studentId}`);
           setStudent(studentResponse.data);
         } catch (err) {
           console.error('Error fetching student:', err);
-          // Fallback: use student data from application
           setStudent({
             firstName: appData.studentName || 'Unknown',
             lastName: '',
@@ -100,11 +99,32 @@ const ViewApplication = () => {
           });
         }
       }
+
+      // ---------- AUTO-START REVIEW ----------
+      // If the application has no status, automatically start the review.
+      if (!appData.status || appData.status === '') {
+        await autoStartReview();
+      }
+      // --------------------------------------
+
     } catch (error) {
       console.error('Error fetching application:', error);
       setError(error.response?.data?.detail || 'Failed to load application details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // New function to auto-start review
+  const autoStartReview = async () => {
+    if (reviewStarted) return;
+    setReviewStarted(true);
+    try {
+      await api.put(`/api/applications/${id}/review`);
+      setApplication(prev => prev ? { ...prev, status: 'In Review' } : null);
+      console.log('Auto-review started successfully');
+    } catch (error) {
+      console.error('Error auto-starting review:', error);
     }
   };
 
@@ -143,45 +163,33 @@ const ViewApplication = () => {
 
   const getModalMessage = (status) => {
     switch(status) {
-      case 'Accept':
-        return 'Are you sure you want to Accept this Student\'s Application?';
-      case 'Reject':
-        return 'Are you sure you want to Reject this Student\'s Application?';
-      default:
-        return `Are you sure you want to change the status to ${status}?`;
+      case 'Accept': return 'Are you sure you want to Accept this Student\'s Application?';
+      case 'Reject': return 'Are you sure you want to Reject this Student\'s Application?';
+      default: return `Are you sure you want to change the status to ${status}?`;
     }
   };
 
   const getModalTitle = (status) => {
     switch(status) {
-      case 'Accept':
-        return 'Accept Application';
-      case 'Reject':
-        return 'Reject Application';
-      default:
-        return 'Update Application Status';
+      case 'Accept': return 'Accept Application';
+      case 'Reject': return 'Reject Application';
+      default: return 'Update Application Status';
     }
   };
 
   const getNotePlaceholder = (status) => {
     switch(status) {
-      case 'Accept':
-        return 'Add a note (e.g. Start date, next steps, etc.)';
-      case 'Reject':
-        return 'Add a note explaining why the application was rejected';
-      default:
-        return 'Add a note (optional)';
+      case 'Accept': return 'Add a note (e.g. Start date, next steps, etc.)';
+      case 'Reject': return 'Add a note explaining why the application was rejected';
+      default: return 'Add a note (optional)';
     }
   };
 
   const getNoteLabel = (status) => {
     switch(status) {
-      case 'Accept':
-        return 'Acceptance Note (Optional)';
-      case 'Reject':
-        return 'Rejection Reason (Optional)';
-      default:
-        return 'Note (Optional)';
+      case 'Accept': return 'Acceptance Note (Optional)';
+      case 'Reject': return 'Rejection Reason (Optional)';
+      default: return 'Note (Optional)';
     }
   };
 
@@ -194,7 +202,6 @@ const ViewApplication = () => {
   const confirmStatusChange = async () => {
     setUpdating(true);
     try {
-      // Map status to what the backend expects
       let backendStatus = selectedStatus;
       if (selectedStatus === 'Accept') backendStatus = 'Accepted';
       if (selectedStatus === 'Reject') backendStatus = 'Rejected';
@@ -204,7 +211,6 @@ const ViewApplication = () => {
         note: note || ''
       });
       
-      // Update local state
       setApplication(prev => ({
         ...prev,
         status: backendStatus,
@@ -212,10 +218,7 @@ const ViewApplication = () => {
       }));
       
       setShowStatusModal(false);
-      
-      // Refresh data
       await fetchApplicationData();
-      
     } catch (error) {
       console.error('Error updating status:', error);
       alert(error.response?.data?.detail || 'Failed to update application status');
@@ -296,7 +299,6 @@ const ViewApplication = () => {
     );
   }
 
-  // Get student name from student data or application
   const studentName = student 
     ? `${student.firstName || ''} ${student.lastName || ''}`.trim() 
     : application.studentName || 'Unknown Student';
@@ -320,7 +322,6 @@ const ViewApplication = () => {
 
   return (
     <Container className="py-8 max-w-5xl">
-      {/* Back Button */}
       <button
         onClick={() => navigate('/company/applications')}
         className="flex items-center text-text-secondary hover:text-primary transition-colors mb-6 group"
@@ -329,7 +330,6 @@ const ViewApplication = () => {
         Back to Applications
       </button>
 
-      {/* Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Application Details</h1>
@@ -348,9 +348,7 @@ const ViewApplication = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Content - Left */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Student Profile Card */}
           <Card variant="bordered" padding="lg">
             <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
               <User className="w-5 h-5 mr-2 text-primary" />
@@ -364,9 +362,7 @@ const ViewApplication = () => {
                 </span>
               </div>
               <div>
-                <h4 className="text-xl font-bold text-primary-dark">
-                  {studentName}
-                </h4>
+                <h4 className="text-xl font-bold text-primary-dark">{studentName}</h4>
                 <p className="text-text-secondary">{studentCareerAspiration || 'Student'}</p>
               </div>
             </div>
@@ -419,7 +415,6 @@ const ViewApplication = () => {
             </div>
           </Card>
 
-          {/* Skills & Interests */}
           {(studentSkills.length > 0 || studentInterests.length > 0 || studentCareerAspiration) && (
             <Card variant="bordered" padding="lg">
               <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
@@ -461,7 +456,6 @@ const ViewApplication = () => {
             </Card>
           )}
 
-          {/* Cover Letter */}
           {application.coverLetter && (
             <Card variant="bordered" padding="lg">
               <h3 className="text-lg font-semibold text-primary-dark mb-3 flex items-center">
@@ -475,18 +469,15 @@ const ViewApplication = () => {
           )}
         </div>
 
-        {/* Right Sidebar - Actions */}
         <div className="space-y-6">
           <Card variant="bordered" padding="lg" className="sticky top-24">
             <h3 className="text-lg font-bold text-primary-dark mb-4">Application Actions</h3>
             
-            {/* Match Score */}
             <div className="mb-4 p-4 bg-primary/5 rounded-xl text-center">
               <p className="text-sm text-text-muted">Match Score</p>
               <p className="text-3xl font-bold text-primary">{application.matchScore || 0}%</p>
             </div>
 
-            {/* Status Update */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-primary-dark">Update Status</p>
               {statusOptions.map((status) => {
@@ -515,10 +506,8 @@ const ViewApplication = () => {
               })}
             </div>
 
-            {/* Divider */}
             <div className="my-4 border-t border-border-light"></div>
 
-            {/* Contact Actions */}
             <div className="space-y-2">
               <p className="text-sm font-medium text-primary-dark">Contact Student</p>
               {studentEmail && studentEmail !== 'Not provided' && (
@@ -548,7 +537,6 @@ const ViewApplication = () => {
         </div>
       </div>
 
-      {/* Status Change Confirmation Modal with Note */}
       {showStatusModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <motion.div
@@ -574,7 +562,6 @@ const ViewApplication = () => {
               {getModalMessage(selectedStatus)}
             </p>
 
-            {/* Note Input */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-primary-dark mb-1.5">
                 {getNoteLabel(selectedStatus)}

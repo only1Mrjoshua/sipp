@@ -5,6 +5,8 @@ from bson import ObjectId
 from app.core.database import get_users_collection, get_internships_collection, get_applications_collection
 from app.core.security import decode_access_token
 from app.models.application import ApplicationCreate, ApplicationUpdate, ApplicationOut
+from app.services.otp_service import OTPService
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/applications", tags=["Applications"])
 
@@ -16,30 +18,31 @@ async def get_current_user(
 ):
     """Get current user from JWT token in Authorization header"""
     token = credentials.credentials
-    
+
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-    
+
     collection = await get_users_collection()
     user = await collection.find_one({"_id": ObjectId(payload["sub"])})
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     if not user.get("isActive", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated"
         )
-    
+
     return user
+
 
 @router.post("/apply")
 async def apply_to_internship(
@@ -47,14 +50,14 @@ async def apply_to_internship(
     user: dict = Depends(get_current_user)
 ):
     """Apply to an internship (Student only)"""
-    
+
     # Check if user is a student
     if user.get("role") != "student":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can apply to internships"
         )
-    
+
     # Check if internship exists
     internships_collection = await get_internships_collection()
     try:
@@ -64,44 +67,44 @@ async def apply_to_internship(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid internship ID"
         )
-    
+
     if not internship:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Internship not found"
         )
-    
+
     # Check if internship is active
     if internship.get("status") != "Active":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This internship is no longer accepting applications"
         )
-    
+
     # Check if student already applied
     applications_collection = await get_applications_collection()
     existing = await applications_collection.find_one({
         "internshipId": application_data.internshipId,
         "studentId": str(user["_id"])
     })
-    
+
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You have already applied to this internship"
         )
-    
+
     # Calculate match score
     student_skills = user.get("skills", [])
     internship_skills = internship.get("skillsRequired", [])
-    
+
     if student_skills and internship_skills:
         matched_skills = [s for s in student_skills if s in internship_skills]
         match_score = (len(matched_skills) / len(internship_skills)) * 100 if internship_skills else 0
         match_score = min(round(match_score), 100)
     else:
         match_score = 0
-    
+
     # Create application with NO status (null or empty)
     application_doc = {
         "internshipId": application_data.internshipId,
@@ -122,14 +125,33 @@ async def apply_to_internship(
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
-    
+
     result = await applications_collection.insert_one(application_doc)
-    
+    application_id = str(result.inserted_id)
+
+    # ---------- Send email notification to company ----------
+    try:
+        users_collection = await get_users_collection()
+        company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
+        if company and company.get("email"):
+            await OTPService.send_application_notification(
+                company_email=company["email"],
+                company_name=company.get("companyName", "Company"),
+                student_name=application_doc["studentName"] or "A student",
+                internship_title=internship.get("title", "an internship"),
+                application_id=application_id,
+                frontend_url=settings.FRONTEND_URL
+            )
+    except Exception as e:
+        # Log error but don't block the response
+        print(f"Error sending application notification: {e}")
+
     return {
         "message": "Application submitted successfully",
-        "application_id": str(result.inserted_id),
+        "application_id": application_id,
         "matchScore": match_score
     }
+
 
 @router.put("/{application_id}/review")
 async def start_review(
@@ -137,15 +159,16 @@ async def start_review(
     user: dict = Depends(get_current_user)
 ):
     """Company starts reviewing an application - sets status from None to In Review"""
-    
+
     if user.get("role") != "company":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only companies can review applications"
         )
-    
+
     applications_collection = await get_applications_collection()
-    
+    users_collection = await get_users_collection()   # needed for student/company info
+
     try:
         application = await applications_collection.find_one({"_id": ObjectId(application_id)})
     except:
@@ -153,20 +176,20 @@ async def start_review(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid application ID"
         )
-    
+
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found"
         )
-    
+
     # Check if company owns this application
     if application.get("companyId") != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only review applications for your internships"
         )
-    
+
     # Only allow review if status is None or empty
     current_status = application.get("status")
     if current_status and current_status != "":
@@ -174,7 +197,7 @@ async def start_review(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Application already has status: {current_status}. Cannot start review."
         )
-    
+
     # Update status to "In Review"
     await applications_collection.update_one(
         {"_id": ObjectId(application_id)},
@@ -184,78 +207,95 @@ async def start_review(
             "updatedAt": datetime.utcnow()
         }}
     )
-    
+
+    # ---------- Send email to student ----------
+    try:
+        student = await users_collection.find_one({"_id": ObjectId(application["studentId"])})
+        if student and student.get("email"):
+            company = await users_collection.find_one({"_id": ObjectId(user["_id"])})
+            company_name = company.get("companyName", "Company") if company else "Company"
+
+            student_name = f"{student.get('firstName', '')} {student.get('lastName', '')}".strip() or "Student"
+            internship_title = application.get("internshipTitle", "Internship")
+
+            await OTPService.send_application_status_update(
+                student_email=student["email"],
+                student_name=student_name,
+                company_name=company_name,
+                internship_title=internship_title,
+                status="In Review",
+                application_id=application_id,
+                frontend_url=settings.FRONTEND_URL
+            )
+    except Exception as e:
+        print(f"Error sending status update email: {e}")
+
     return {
         "message": "Application is now In Review",
         "status": "In Review"
     }
 
+
 @router.get("/company")
 async def get_company_applications(user: dict = Depends(get_current_user)):
     """Get all applications for internships created by this company"""
-    
+
     if user.get("role") != "company":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only companies can view applications"
         )
-    
-    # Get all internships for this company
+
     internships_collection = await get_internships_collection()
     company_internships = await internships_collection.find({"companyId": str(user["_id"])}).to_list(None)
-    
+
     if not company_internships:
         return []
-    
+
     internship_ids = [str(i["_id"]) for i in company_internships]
-    
-    # Get all applications for these internships
+
     applications_collection = await get_applications_collection()
     applications = await applications_collection.find({
         "internshipId": {"$in": internship_ids}
     }).to_list(None)
-    
-    # Format response
+
     result = []
     for app in applications:
         app["_id"] = str(app["_id"])
-        # Get internship details for additional info
         internship = next((i for i in company_internships if str(i["_id"]) == app["internshipId"]), None)
         if internship:
             app["internshipTitle"] = internship.get("title", "")
             app["companyName"] = user.get("companyName", "")
         result.append(app)
-    
+
     return result
+
 
 @router.get("/student")
 async def get_student_applications(user: dict = Depends(get_current_user)):
     """Get all applications submitted by the current student"""
-    
+
     if user.get("role") != "student":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can view their applications"
         )
-    
+
     applications_collection = await get_applications_collection()
     users_collection = await get_users_collection()
     internships_collection = await get_internships_collection()
-    
+
     applications = await applications_collection.find({
         "studentId": str(user["_id"])
     }).to_list(None)
-    
-    # Format response with company names
+
     result = []
     for app in applications:
         app["_id"] = str(app["_id"])
-        
-        # Get internship details to get companyId
+
         internship = await internships_collection.find_one({"_id": ObjectId(app["internshipId"])})
         if internship:
             app["internshipTitle"] = internship.get("title", "")
-            # Get company details
             company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
             if company:
                 app["companyName"] = company.get("companyName", "Unknown Company")
@@ -264,13 +304,12 @@ async def get_student_applications(user: dict = Depends(get_current_user)):
         else:
             app["internshipTitle"] = app.get("internshipTitle", "Unknown Position")
             app["companyName"] = "Unknown Company"
-        
-        # Ensure all required fields exist
+
         app["status"] = app.get("status", "In Review")
-        
         result.append(app)
-    
+
     return result
+
 
 @router.get("/{application_id}")
 async def get_application(
@@ -278,9 +317,9 @@ async def get_application(
     user: dict = Depends(get_current_user)
 ):
     """Get a specific application by ID"""
-    
+
     applications_collection = await get_applications_collection()
-    
+
     try:
         application = await applications_collection.find_one({"_id": ObjectId(application_id)})
     except:
@@ -288,29 +327,27 @@ async def get_application(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid application ID"
         )
-    
+
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found"
         )
-    
+
     # Check authorization
     if user.get("role") == "student" and application["studentId"] != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view your own applications"
         )
-    
+
     if user.get("role") == "company" and application["companyId"] != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view applications for your internships"
         )
-    
-    # Get additional details
+
     if user.get("role") == "company":
-        # Get student details
         users_collection = await get_users_collection()
         student = await users_collection.find_one({"_id": ObjectId(application["studentId"])})
         if student:
@@ -326,9 +363,10 @@ async def get_application(
                 "interests": student.get("interests", []),
                 "careerAspiration": student.get("careerAspiration", "")
             }
-    
+
     application["_id"] = str(application["_id"])
     return application
+
 
 @router.put("/{application_id}/status")
 async def update_application_status(
@@ -337,16 +375,16 @@ async def update_application_status(
     user: dict = Depends(get_current_user)
 ):
     """Update application status (Company only)"""
-    
+
     if user.get("role") != "company":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only companies can update application status"
         )
-    
+
     applications_collection = await get_applications_collection()
     internships_collection = await get_internships_collection()
-    
+
     try:
         application = await applications_collection.find_one({"_id": ObjectId(application_id)})
     except:
@@ -354,80 +392,74 @@ async def update_application_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid application ID"
         )
-    
+
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found"
         )
-    
-    # Check if company owns this application
+
     if application["companyId"] != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update applications for your internships"
         )
-    
+
     new_status = status_data.get("status")
     if not new_status:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Status is required"
         )
-    
+
     valid_statuses = ["In Review", "Accepted", "Rejected"]
     if new_status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
         )
-    
+
     note = status_data.get("note", "")
     old_status = application.get("status")
-    
+
     print(f"=== Updating application status ===")
     print(f"Application ID: {application_id}")
     print(f"Old status: {old_status}")
     print(f"New status: {new_status}")
     print(f"Internship ID: {application['internshipId']}")
-    
+
     update_data = {
         "status": new_status,
         "updatedAt": datetime.utcnow()
     }
-    
     if note:
         update_data["note"] = note
-    
+
     await applications_collection.update_one(
         {"_id": ObjectId(application_id)},
         {"$set": update_data}
     )
-    
-    # Get the internship
+
     internship = await internships_collection.find_one({"_id": ObjectId(application["internshipId"])})
-    
+
     if internship:
         print(f"Found internship: {internship.get('title')}")
         print(f"Current spots: {internship.get('spotsAvailable')}")
-        
+
         current_spots = internship.get("spotsAvailable", 0)
         new_spots = current_spots
-        
-        # If status changed to "Accepted", decrement spots available
+
         if new_status == "Accepted" and old_status != "Accepted":
             if current_spots > 0:
                 new_spots = current_spots - 1
                 print(f"Decrementing spots: {current_spots} -> {new_spots}")
             else:
                 print("No spots left to decrement!")
-        
-        # If status changed from "Accepted" to something else, increment spots back
+
         elif old_status == "Accepted" and new_status != "Accepted":
             new_spots = current_spots + 1
             print(f"Incrementing spots: {current_spots} -> {new_spots}")
-        
-        # Update spots if changed
+
         if new_spots != current_spots:
             result = await internships_collection.update_one(
                 {"_id": ObjectId(application["internshipId"])},
@@ -439,7 +471,7 @@ async def update_application_status(
             print("No change to spots needed")
     else:
         print(f"ERROR: Internship not found with ID: {application['internshipId']}")
-    
+
     return {
         "message": f"Application status updated to {new_status}",
         "status": new_status,
@@ -454,17 +486,16 @@ async def get_applications_by_internship(
     user: dict = Depends(get_current_user)
 ):
     """Get all applications for a specific internship"""
-    
+
     if user.get("role") != "company":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only companies can view applications"
         )
-    
+
     applications_collection = await get_applications_collection()
     users_collection = await get_users_collection()
-    
-    # Check if the internship belongs to this company
+
     internships_collection = await get_internships_collection()
     try:
         internship = await internships_collection.find_one({"_id": ObjectId(internship_id)})
@@ -473,28 +504,25 @@ async def get_applications_by_internship(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid internship ID"
         )
-    
+
     if not internship:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Internship not found"
         )
-    
+
     if internship["companyId"] != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view applications for your own internships"
         )
-    
-    # Get applications for this internship
+
     applications = await applications_collection.find({
         "internshipId": internship_id
     }).to_list(None)
-    
-    # Get student details for each application
+
     result = []
     for app in applications:
-        # Get student details
         student = await users_collection.find_one({"_id": ObjectId(app["studentId"])})
         result.append({
             "_id": str(app["_id"]),
@@ -515,7 +543,7 @@ async def get_applications_by_internship(
                 "interests": student.get("interests", []) if student else []
             } if student else None
         })
-    
+
     return result
 
 
@@ -526,9 +554,9 @@ async def get_application_with_details(
     user: dict = Depends(get_current_user)
 ):
     """Get a specific application with full internship and company details for students"""
-    
+
     applications_collection = await get_applications_collection()
-    
+
     try:
         application = await applications_collection.find_one({"_id": ObjectId(application_id)})
     except:
@@ -536,36 +564,33 @@ async def get_application_with_details(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid application ID"
         )
-    
+
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Application not found"
         )
-    
-    # Check authorization - student can view their own applications
+
+    # Check authorization
     if user.get("role") == "student" and application["studentId"] != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view your own applications"
         )
-    
-    # Company can view applications for their internships
+
     if user.get("role") == "company" and application["companyId"] != str(user["_id"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view applications for your internships"
         )
-    
-    # Get internship details
+
     internships_collection = await get_internships_collection()
     internship = None
     try:
         internship = await internships_collection.find_one({"_id": ObjectId(application["internshipId"])})
     except:
         pass
-    
-    # Get company details
+
     users_collection = await get_users_collection()
     company = None
     if internship and internship.get("companyId"):
@@ -573,8 +598,7 @@ async def get_application_with_details(
             company = await users_collection.find_one({"_id": ObjectId(internship["companyId"])})
         except:
             pass
-    
-    # Build response
+
     response = {
         "application": {
             "_id": str(application["_id"]),
@@ -600,8 +624,7 @@ async def get_application_with_details(
         "internship": None,
         "company": None
     }
-    
-    # Add internship data if available
+
     if internship:
         response["internship"] = {
             "_id": str(internship["_id"]),
@@ -619,8 +642,7 @@ async def get_application_with_details(
             "benefits": internship.get("benefits", []),
             "status": internship.get("status", "")
         }
-    
-    # Add company data if available
+
     if company:
         response["company"] = {
             "_id": str(company["_id"]),
@@ -636,7 +658,6 @@ async def get_application_with_details(
             "profilePicture": company.get("profilePicture", "")
         }
     else:
-        # Fallback: use company data from application if available
         response["company"] = {
             "_id": application.get("companyId", ""),
             "companyName": application.get("companyName", "Unknown Company"),
@@ -650,5 +671,5 @@ async def get_application_with_details(
             "aboutCompany": "",
             "profilePicture": ""
         }
-    
+
     return response
