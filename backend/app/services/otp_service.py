@@ -16,7 +16,6 @@ class OTPService:
         try:
             plain_text_content = f"""
 SIPP - Smart Internship Placement Portal
-=========================================
 
 Verify Your Email
 -----------------
@@ -97,9 +96,6 @@ Click the link below to view the full application and take action:
 {view_link}
 
 Thank you for using SIPP.
-
----
-This is an automated message from SIPP – Smart Internship Placement Portal.
             """
             params = {
                 "from": settings.EMAIL_FROM,
@@ -139,9 +135,6 @@ You can view your application at:
 {view_link}
 
 Thank you for using SIPP.
-
----
-This is an automated message from SIPP – Smart Internship Placement Portal.
             """
             params = {
                 "from": settings.EMAIL_FROM,

@@ -113,12 +113,12 @@ const Navbar = () => {
   };
 
   const getRoleBasedDashboard = () => {
-    if (!user) return '/dashboard';
+    if (!user) return '/';
     switch(user.role) {
-      case 'student': return '/student/dashboard';
-      case 'company': return '/company/dashboard';
-      case 'admin': return '/admin/dashboard';
-      default: return '/dashboard';
+      case 'student': return '/student/internships';   // ✅ This route exists
+      case 'company': return '/company/internships';   // ✅ This route exists
+      case 'admin': return '/admin';                   // ✅ This route exists (index)
+      default: return '/';
     }
   };
 
@@ -236,7 +236,7 @@ const Navbar = () => {
                       onClick={() => { setShowDropdown(false); navigate(getRoleBasedDashboard()); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light transition-colors"
                     >
-                      <LayoutDashboard className="w-4 h-4" /> Dashboard
+                      <LayoutDashboard className="w-4 h-4" /> Internships
                     </button>
                     <button
                       onClick={() => { setShowDropdown(false); navigate(getRoleBasedApplications()); }}
