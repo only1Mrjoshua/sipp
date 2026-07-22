@@ -384,6 +384,7 @@ async def update_application_status(
 
     applications_collection = await get_applications_collection()
     internships_collection = await get_internships_collection()
+    users_collection = await get_users_collection()   # 👈 needed for student/company info
 
     try:
         application = await applications_collection.find_one({"_id": ObjectId(application_id)})
@@ -426,7 +427,6 @@ async def update_application_status(
     print(f"Application ID: {application_id}")
     print(f"Old status: {old_status}")
     print(f"New status: {new_status}")
-    print(f"Internship ID: {application['internshipId']}")
 
     update_data = {
         "status": new_status,
@@ -440,8 +440,31 @@ async def update_application_status(
         {"$set": update_data}
     )
 
-    internship = await internships_collection.find_one({"_id": ObjectId(application["internshipId"])})
+    # ---------- Send email to student if status changed ----------
+    if old_status != new_status:
+        try:
+            student = await users_collection.find_one({"_id": ObjectId(application["studentId"])})
+            if student and student.get("email"):
+                company = await users_collection.find_one({"_id": ObjectId(user["_id"])})
+                company_name = company.get("companyName", "Company") if company else "Company"
 
+                student_name = f"{student.get('firstName', '')} {student.get('lastName', '')}".strip() or "Student"
+                internship_title = application.get("internshipTitle", "Internship")
+
+                await OTPService.send_application_status_update(
+                    student_email=student["email"],
+                    student_name=student_name,
+                    company_name=company_name,
+                    internship_title=internship_title,
+                    status=new_status,
+                    application_id=application_id,
+                    frontend_url=settings.FRONTEND_URL
+                )
+        except Exception as e:
+            print(f"Error sending status update email: {e}")
+
+    # ---------- Update spots (existing logic) ----------
+    internship = await internships_collection.find_one({"_id": ObjectId(application["internshipId"])})
     if internship:
         print(f"Found internship: {internship.get('title')}")
         print(f"Current spots: {internship.get('spotsAvailable')}")
@@ -461,11 +484,10 @@ async def update_application_status(
             print(f"Incrementing spots: {current_spots} -> {new_spots}")
 
         if new_spots != current_spots:
-            result = await internships_collection.update_one(
+            await internships_collection.update_one(
                 {"_id": ObjectId(application["internshipId"])},
                 {"$set": {"spotsAvailable": new_spots, "updatedAt": datetime.utcnow()}}
             )
-            print(f"Update result: {result.modified_count} document(s) modified")
             print(f"New spots value: {new_spots}")
         else:
             print("No change to spots needed")

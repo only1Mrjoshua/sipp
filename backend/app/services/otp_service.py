@@ -109,7 +109,6 @@ Thank you for using SIPP.
             print(f"Error sending application notification: {e}")
             return False
 
-    # NEW: Send status update to student
     @staticmethod
     async def send_application_status_update(
         student_email: str,
@@ -124,12 +123,23 @@ Thank you for using SIPP.
         try:
             view_link = f"{frontend_url}/student/application/{application_id}"
             subject = f"Application Update: {status} - {internship_title}"
+
+            # Status-specific messages
+            if status.lower() == "in review":
+                body = f"Your application for {internship_title} at {company_name} is now in review. The company will get back to you soon."
+            elif status.lower() == "accepted":
+                body = f"Congratulations! Your application for {internship_title} at {company_name} has been accepted."
+            elif status.lower() == "rejected":
+                body = f"We regret to inform you that your application for {internship_title} at {company_name} has been rejected. We encourage you to continue applying for other opportunities."
+            else:
+                body = f"Your application for {internship_title} at {company_name} has been updated to: {status}."
+
             plain_text = f"""
 Application Status Update
 
 Dear {student_name},
 
-Your application for {internship_title} at {company_name} has been updated to: {status}.
+{body}
 
 You can view your application at:
 {view_link}
