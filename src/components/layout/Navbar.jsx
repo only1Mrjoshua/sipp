@@ -15,6 +15,7 @@ import Button from '../common/Button';
 import Container from '../common/Container';
 import logo from '../../assets/images/logo.png';
 import { authService } from '../../services/authService';
+import api from '../../services/api';  // 👈 import api
 
 /**
  * Main Navigation component
@@ -25,6 +26,7 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [profilePicture, setProfilePicture] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,7 +40,7 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Check if user is logged in
+  // Check if user is logged in and fetch profile
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const userData = authService.getCurrentUser();
@@ -46,11 +48,43 @@ const Navbar = () => {
     if (token && userData) {
       setIsLoggedIn(true);
       setUser(userData);
+      // If we already have a profilePicture in localStorage, use it
+      const storedPic = localStorage.getItem('profile_picture');
+      if (storedPic) {
+        setProfilePicture(storedPic);
+      } else {
+        // Otherwise fetch from backend
+        fetchUserProfile(userData);
+      }
     } else {
       setIsLoggedIn(false);
       setUser(null);
+      setProfilePicture(null);
     }
   }, [location]);
+
+  const fetchUserProfile = async (userData) => {
+    try {
+      let endpoint = '';
+      if (userData.role === 'student') {
+        endpoint = `/api/students/profile/${userData.id}`;
+      } else if (userData.role === 'company') {
+        endpoint = `/api/companies/profile/${userData.id}`;
+      } else {
+        return;
+      }
+      const response = await api.get(endpoint);
+      const profile = response.data;
+      const pic = profile.profilePicture || profile.profile_picture || null;
+      if (pic) {
+        setProfilePicture(pic);
+        // Save to localStorage so next loads are faster
+        localStorage.setItem('profile_picture', pic);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -75,6 +109,8 @@ const Navbar = () => {
     authService.logout();
     setIsLoggedIn(false);
     setUser(null);
+    setProfilePicture(null);
+    localStorage.removeItem('profile_picture');
     setShowDropdown(false);
     navigate('/');
   };
@@ -96,10 +132,7 @@ const Navbar = () => {
   };
 
   const getProfilePictureUrl = () => {
-    if (user?.profilePicture) return user.profilePicture;
-    if (user?.profile_picture) return user.profile_picture;
-    if (user?.avatar) return user.avatar;
-    return null;
+    return profilePicture || null;
   };
 
   const getRoleBasedRoute = () => {
@@ -115,9 +148,9 @@ const Navbar = () => {
   const getRoleBasedDashboard = () => {
     if (!user) return '/';
     switch(user.role) {
-      case 'student': return '/student/internships';   // ✅ This route exists
-      case 'company': return '/company/internships';   // ✅ This route exists
-      case 'admin': return '/admin';                   // ✅ This route exists (index)
+      case 'student': return '/student/internships';
+      case 'company': return '/company/internships';
+      case 'admin': return '/admin';
       default: return '/';
     }
   };
