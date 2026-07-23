@@ -55,7 +55,10 @@ const StudentInternships = () => {
 
   const fetchInternships = async () => {
     try {
-      const response = await api.get('/api/internships/student/matched');
+      // You can pass skip & limit as query params
+      const response = await api.get('/api/internships/student/matched', {
+        params: { skip: 0, limit: 50 }
+      });
       setInternships(response.data || []);
     } catch (error) {
       console.error('Error fetching internships:', error);

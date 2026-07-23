@@ -272,89 +272,96 @@ async def get_company_internships(user: dict = Depends(get_current_user)):
 
 
 @router.get("/student/matched")
-async def get_matched_internships(user: dict = Depends(get_current_user)):
-    """Get internships matched to a student based on department AND skills matching"""
+async def get_matched_internships(
+    user: dict = Depends(get_current_user),
+    skip: int = 0,
+    limit: int = 50
+):
+    """Get internships matched to a student – optimized with aggregation and pagination"""
     
     if user.get("role") != "student":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can view matched internships"
         )
-    
-    # Get the full user profile from the database
+
+    # 1. Full student profile
     users_collection = await get_users_collection()
     full_user = await users_collection.find_one({"_id": ObjectId(user["_id"])})
-    
     if not full_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
+        raise HTTPException(status_code=404, detail="User not found")
+
     internships_collection = await get_internships_collection()
     applications_collection = await get_applications_collection()
-    
-    # Get all active internships
-    all_internships = await internships_collection.find({"status": "Active"}).to_list(None)
-    
+
+    # 2. Get active internships with pagination (sorted newest first)
+    internships_cursor = internships_collection.find({"status": "Active"}).sort("createdAt", -1).skip(skip).limit(limit)
+    internships = await internships_cursor.to_list(length=limit)
+    if not internships:
+        return []
+
+    # 3. Collect all company IDs and fetch companies in ONE query
+    company_ids = list({ObjectId(internship["companyId"]) for internship in internships})
+    companies = await users_collection.find({"_id": {"$in": company_ids}}).to_list(None)
+    company_map = {str(comp["_id"]): comp for comp in companies}
+
+    # 4. Count applications per internship in ONE aggregation
+    internship_ids = [internship["_id"] for internship in internships]
+
+    # total applicants
+    pipeline_total = [
+        {"$match": {"internshipId": {"$in": internship_ids}}},
+        {"$group": {"_id": "$internshipId", "total": {"$sum": 1}}}
+    ]
+    total_counts = await applications_collection.aggregate(pipeline_total).to_list(None)
+    total_map = {doc["_id"]: doc["total"] for doc in total_counts}
+
+    # matched applicants (Accepted or In Review)
+    pipeline_matched = [
+        {"$match": {"internshipId": {"$in": internship_ids}, "status": {"$in": ["Accepted", "In Review"]}}},
+        {"$group": {"_id": "$internshipId", "matched": {"$sum": 1}}}
+    ]
+    matched_counts = await applications_collection.aggregate(pipeline_matched).to_list(None)
+    matched_map = {doc["_id"]: doc["matched"] for doc in matched_counts}
+
+    # 5. Build response, computing match scores in Python
     matched_internships = []
-    
-    for internship in all_internships:
-        # Get the company
-        company = await users_collection.find_one({
-            "_id": ObjectId(internship["companyId"])
-        })
-        
+    for internship in internships:
+        company = company_map.get(internship["companyId"])
         if not company:
             continue
-        
-        # ============ USE calculate_match() ============
+
         match_score = calculate_match(full_user, internship, company)
-        
-        # Only include if match score > 0
-        if match_score > 0:
-            internship_id = str(internship["_id"])
-            company_name = company.get("companyName", "Unknown Company")
-            company_industry = company.get("industry", "")
-            
-            # Count applicants for this internship
-            applicant_count = await applications_collection.count_documents({
-                "internshipId": internship_id
-            })
-            
-            # Count matched students (applications with status "Accepted" or "In Review")
-            matched_count = await applications_collection.count_documents({
-                "internshipId": internship_id,
-                "status": {"$in": ["Accepted", "In Review"]}
-            })
-            
-            matched_internships.append({
-                "id": internship_id,
-                "companyId": internship.get("companyId", ""),
-                "title": internship.get("title", ""),
-                "location": internship.get("location", ""),
-                "type": internship.get("type", ""),
-                "duration": internship.get("duration", ""),
-                "aboutRole": internship.get("aboutRole", ""),
-                "aboutCompany": internship.get("aboutCompany", ""),
-                "applicationDeadline": internship.get("applicationDeadline", ""),
-                "spotsAvailable": internship.get("spotsAvailable", 0),
-                "skillsRequired": internship.get("skillsRequired", []),
-                "skillsOffered": internship.get("skillsOffered", []),
-                "benefits": internship.get("benefits", []),
-                "status": internship.get("status", "Active"),
-                "companyName": company_name,
-                "companyIndustry": company_industry,
-                "match": match_score,
-                "applicants": applicant_count,
-                "matchCount": matched_count,
-                "createdAt": internship.get("createdAt", datetime.utcnow()),
-                "updatedAt": internship.get("updatedAt", datetime.utcnow())
-            })
-    
+        if match_score <= 0:
+            continue
+
+        internship_id = str(internship["_id"])
+        matched_internships.append({
+            "id": internship_id,
+            "companyId": internship.get("companyId", ""),
+            "title": internship.get("title", ""),
+            "location": internship.get("location", ""),
+            "type": internship.get("type", ""),
+            "duration": internship.get("duration", ""),
+            "aboutRole": internship.get("aboutRole", ""),
+            "aboutCompany": internship.get("aboutCompany", ""),
+            "applicationDeadline": internship.get("applicationDeadline", ""),
+            "spotsAvailable": internship.get("spotsAvailable", 0),
+            "skillsRequired": internship.get("skillsRequired", []),
+            "skillsOffered": internship.get("skillsOffered", []),
+            "benefits": internship.get("benefits", []),
+            "status": internship.get("status", "Active"),
+            "companyName": company.get("companyName", "Unknown Company"),
+            "companyIndustry": company.get("industry", ""),
+            "match": match_score,
+            "applicants": total_map.get(internship_id, 0),
+            "matchCount": matched_map.get(internship_id, 0),
+            "createdAt": internship.get("createdAt", datetime.utcnow()),
+            "updatedAt": internship.get("updatedAt", datetime.utcnow())
+        })
+
     # Sort by match score descending
     matched_internships.sort(key=lambda x: x["match"], reverse=True)
-    
     return matched_internships
 
 
