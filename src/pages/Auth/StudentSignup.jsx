@@ -115,11 +115,6 @@ const StudentSignup = () => {
       return;
     }
 
-    if (!formData.acceptTerms) {
-      setError('Please accept the Terms and Conditions');
-      return;
-    }
-
     // Skills validation is not required - they can have none
 
     setLoading(true);
@@ -449,26 +444,6 @@ const StudentSignup = () => {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Agreement */}
-                <div>
-                  <label className="flex items-start space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="acceptTerms"
-                      checked={formData.acceptTerms}
-                      onChange={handleChange}
-                      className="w-5 h-5 mt-0.5 text-primary border-border-light rounded focus:ring-primary"
-                      required
-                    />
-                    <span className="text-sm text-text-secondary">
-                      I accept the{' '}
-                      <Link to="/terms" className="text-primary hover:underline">
-                        Terms and Conditions
-                      </Link>
-                    </span>
-                  </label>
                 </div>
 
                 {/* Submit Button */}
