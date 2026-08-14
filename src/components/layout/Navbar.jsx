@@ -9,18 +9,15 @@ import {
   Settings, 
   FileText, 
   ChevronDown, 
-  LayoutDashboard
+  LayoutDashboard,
+  Briefcase
 } from 'lucide-react';
 import Button from '../common/Button';
 import Container from '../common/Container';
 import logo from '../../assets/images/logo.png';
 import { authService } from '../../services/authService';
-import api from '../../services/api';  // 👈 import api
+import api from '../../services/api';
 
-/**
- * Main Navigation component
- * Transparent initially, becomes solid on scroll
- */
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -48,12 +45,10 @@ const Navbar = () => {
     if (token && userData) {
       setIsLoggedIn(true);
       setUser(userData);
-      // If we already have a profilePicture in localStorage, use it
       const storedPic = localStorage.getItem('profile_picture');
       if (storedPic) {
         setProfilePicture(storedPic);
       } else {
-        // Otherwise fetch from backend
         fetchUserProfile(userData);
       }
     } else {
@@ -78,7 +73,6 @@ const Navbar = () => {
       const pic = profile.profilePicture || profile.profile_picture || null;
       if (pic) {
         setProfilePicture(pic);
-        // Save to localStorage so next loads are faster
         localStorage.setItem('profile_picture', pic);
       }
     } catch (error) {
@@ -121,7 +115,6 @@ const Navbar = () => {
     return first + last || 'U';
   };
 
-  // Get user's first name only
   const getFirstName = () => {
     if (!user) return 'User';
     if (user.companyName) return user.companyName;
@@ -131,10 +124,9 @@ const Navbar = () => {
     return 'User';
   };
 
-  const getProfilePictureUrl = () => {
-    return profilePicture || null;
-  };
+  const getProfilePictureUrl = () => profilePicture || null;
 
+  // Role‑based path helpers
   const getRoleBasedRoute = () => {
     if (!user) return '/profile';
     switch(user.role) {
@@ -173,6 +165,65 @@ const Navbar = () => {
       default: return '/settings';
     }
   };
+
+  // ---------- Build dropdown items based on role ----------
+  const getDropdownItems = () => {
+    if (!user) return [];
+
+    const items = [];
+
+    // Admin: only Dashboard + Logout
+    if (user.role === 'admin') {
+      items.push({
+        icon: LayoutDashboard,
+        label: 'Dashboard',
+        onClick: () => navigate(getRoleBasedDashboard())
+      });
+      return items;
+    }
+
+    // Student / Company share most items
+    items.push({
+      icon: User,
+      label: 'My Profile',
+      onClick: () => navigate(getRoleBasedRoute())
+    });
+
+    if (user.role === 'student') {
+      items.push({
+        icon: Briefcase,
+        label: 'Internships',
+        onClick: () => navigate(getRoleBasedDashboard())
+      });
+      items.push({
+        icon: FileText,
+        label: 'My Applications',
+        onClick: () => navigate(getRoleBasedApplications())
+      });
+    } else if (user.role === 'company') {
+      items.push({
+        icon: Briefcase,
+        label: 'My Internships',
+        onClick: () => navigate(getRoleBasedDashboard())
+      });
+      items.push({
+        icon: FileText,
+        label: 'Applications',
+        onClick: () => navigate(getRoleBasedApplications())
+      });
+    }
+
+    // Settings + Logout for both student and company
+    items.push({
+      icon: Settings,
+      label: 'Settings',
+      onClick: () => navigate(getRoleBasedSettings())
+    });
+
+    return items;
+  };
+
+  const dropdownItems = getDropdownItems();
 
   const avatarUrl = getProfilePictureUrl();
   const displayName = getFirstName();
@@ -259,35 +310,26 @@ const Navbar = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => { setShowDropdown(false); navigate(getRoleBasedRoute()); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light transition-colors"
-                    >
-                      <User className="w-4 h-4" /> My Profile
-                    </button>
-                    <button
-                      onClick={() => { setShowDropdown(false); navigate(getRoleBasedDashboard()); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light transition-colors"
-                    >
-                      <LayoutDashboard className="w-4 h-4" /> Internships
-                    </button>
-                    <button
-                      onClick={() => { setShowDropdown(false); navigate(getRoleBasedApplications()); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light transition-colors"
-                    >
-                      <FileText className="w-4 h-4" /> My Applications
-                    </button>
+                    {/* Role‑based menu items */}
+                    {dropdownItems.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setShowDropdown(false);
+                          item.onClick();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light transition-colors"
+                      >
+                        <item.icon className="w-4 h-4" /> {item.label}
+                      </button>
+                    ))}
 
-                    <div className="border-t border-border-light my-1"></div>
-
+                    {/* Logout is always shown for all roles */}
                     <button
-                      onClick={() => { setShowDropdown(false); navigate(getRoleBasedSettings()); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light transition-colors"
-                    >
-                      <Settings className="w-4 h-4" /> Settings
-                    </button>
-                    <button
-                      onClick={handleLogout}
+                      onClick={() => {
+                        setShowDropdown(false);
+                        handleLogout();
+                      }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-status-error hover:bg-status-error/5 transition-colors"
                     >
                       <LogOut className="w-4 h-4" /> Logout
@@ -358,28 +400,32 @@ const Navbar = () => {
                     <p className="text-xs text-text-muted">{user.email}</p>
                   </div>
                 </div>
-                
-                <Link to={getRoleBasedRoute()} onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="ghost" fullWidth icon={<User className="w-4 h-4" />}>My Profile</Button>
-                </Link>
-                <Link to={getRoleBasedDashboard()} onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="ghost" fullWidth icon={<LayoutDashboard className="w-4 h-4" />}>Dashboard</Button>
-                </Link>
-                <Link to={getRoleBasedApplications()} onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="ghost" fullWidth icon={<FileText className="w-4 h-4" />}>My Applications</Button>
-                </Link>
-                <Link to={getRoleBasedSettings()} onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="ghost" fullWidth icon={<Settings className="w-4 h-4" />}>Settings</Button>
-                </Link>
-                <Button 
-                  variant="ghost" 
-                  fullWidth 
-                  icon={<LogOut className="w-4 h-4" />}
-                  className="text-status-error hover:bg-status-error/5"
-                  onClick={handleLogout}
+
+                {/* Mobile menu items – same as dropdown */}
+                {dropdownItems.map((item, idx) => (
+                  <Link
+                    key={idx}
+                    to="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsMobileMenuOpen(false);
+                      item.onClick();
+                    }}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-background-light rounded-xl transition-colors"
+                  >
+                    <item.icon className="w-4 h-4" /> {item.label}
+                  </Link>
+                ))}
+
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-status-error hover:bg-status-error/5 rounded-xl transition-colors"
                 >
-                  Logout
-                </Button>
+                  <LogOut className="w-4 h-4" /> Logout
+                </button>
               </>
             ) : (
               <>

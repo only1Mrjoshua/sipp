@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { 
   Briefcase, 
   FileCheck, 
@@ -7,9 +8,11 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import Container from '../components/common/Container';
+import Button from '../components/common/Button';
 import logo from '../assets/images/logo.png';
 import { authService } from '../services/authService';
 import api from '../services/api';
@@ -18,6 +21,7 @@ const StudentsLayout = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [user, setUser] = useState(null);
   const [profilePicture, setProfilePicture] = useState(null);
   const location = useLocation();
@@ -210,7 +214,7 @@ const StudentsLayout = () => {
           {/* Logout */}
           <div className="border-t border-border-light p-4 flex-shrink-0">
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="flex w-full items-center rounded-xl px-4 py-3 text-status-error hover:bg-status-error/10 transition-colors"
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -272,6 +276,49 @@ const StudentsLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-strong"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-status-warning/10 rounded-xl flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-status-warning" />
+              </div>
+              <h3 className="text-lg font-bold text-primary-dark">Confirm Logout</h3>
+            </div>
+
+            <p className="text-text-secondary text-sm mb-6">
+              Are you sure you want to logout of your student account? You will need to login again to access your dashboard.
+            </p>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                fullWidth
+                onClick={() => setShowLogoutModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                fullWidth
+                onClick={handleLogout}
+                className="bg-status-error hover:bg-status-error/80"
+              >
+                Yes, Logout
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

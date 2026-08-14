@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -12,12 +12,20 @@ import {
   User,
   CheckCircle,
   XCircle,
-  Download
+  Download,
+  Loader,
+  AlertCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const AdminStudents = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [students, setStudents] = useState([]);
+  const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -25,69 +33,180 @@ const AdminStudents = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const itemsPerPage = 5;
-
-  const students = [
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@university.edu',
-      phone: '+234 800 000 0000',
-      department: 'Computer Science',
-      level: '400L',
-      matricNumber: 'UNILAG/CS/2024/001',
-      skills: ['React', 'JavaScript', 'CSS', 'Python', 'SQL'],
-      interests: ['Web Development', 'Data Science'],
-      status: 'Active',
-      applications: 8,
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@university.edu',
-      phone: '+234 800 000 0001',
-      department: 'Statistics',
-      level: '400L',
-      matricNumber: 'UNILAG/STAT/2024/002',
-      skills: ['Python', 'SQL', 'Tableau', 'Excel'],
-      interests: ['Data Science', 'Analytics'],
-      status: 'Active',
-      applications: 6,
-    },
-    {
-      id: 3,
-      name: 'Michael Johnson',
-      email: 'michael.j@university.edu',
-      phone: '+234 800 000 0002',
-      department: 'Graphic Design',
-      level: '400L',
-      matricNumber: 'UNILAG/GD/2024/003',
-      skills: ['Figma', 'UI Design', 'UX Research', 'Adobe XD'],
-      interests: ['UI/UX Design', 'Product Design'],
-      status: 'Suspended',
-      applications: 4,
-    },
-  ];
 
   const departments = ['Computer Science', 'Statistics', 'Graphic Design', 'Engineering', 'Business', 'Medicine'];
   const levels = ['100L', '200L', '300L', '400L', '500L'];
   const statuses = ['Active', 'Suspended', 'Inactive'];
 
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          student.matricNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = !selectedDepartment || student.department === selectedDepartment;
-    const matchesLevel = !selectedLevel || student.level === selectedLevel;
-    const matchesStatus = !selectedStatus || student.status === selectedStatus;
-    return matchesSearch && matchesDepartment && matchesLevel && matchesStatus;
-  });
+  useEffect(() => {
+    fetchStudents();
+  }, [searchTerm, selectedDepartment, selectedLevel, selectedStatus, currentPage]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentStudents = filteredStudents.slice(startIndex, endIndex);
+  const fetchStudents = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        setError('Not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const skip = (currentPage - 1) * itemsPerPage;
+      const params = new URLSearchParams({
+        limit: itemsPerPage,
+        skip: skip,
+      });
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedDepartment) params.append('department', selectedDepartment);
+      if (selectedLevel) params.append('level', selectedLevel);
+      if (selectedStatus) params.append('status', selectedStatus);
+
+      const response = await api.get(`/api/admin/students?${params.toString()}`);
+      const data = response.data;
+      setStudents(data.data || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      console.error('Error fetching students:', err);
+      setError(err.response?.data?.detail || 'Failed to load students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewStudent = (student) => {
+    setSelectedStudent(student);
+    setShowProfileModal(true);
+  };
+
+  const handleSuspend = async (studentId, currentStatus) => {
+    if (!window.confirm(`Are you sure you want to ${currentStatus ? 'suspend' : 'activate'} this student?`)) return;
+    setActionLoading(true);
+    try {
+      await api.put(`/api/admin/students/${studentId}/status`, {
+        isActive: !currentStatus
+      });
+      await fetchStudents();
+      if (selectedStudent && selectedStudent._id === studentId) {
+        setSelectedStudent(prev => ({ ...prev, isActive: !currentStatus }));
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to update status');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async (studentId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this student? This action cannot be undone.')) return;
+    setActionLoading(true);
+    try {
+      await api.delete(`/api/admin/students/${studentId}`);
+      await fetchStudents();
+      if (selectedStudent && selectedStudent._id === studentId) {
+        setShowProfileModal(false);
+        setSelectedStudent(null);
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to delete student');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ─── Export to CSV ────────────────────────────────────────────────
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        alert('Not authenticated');
+        setExportLoading(false);
+        return;
+      }
+
+      let allStudents = [];
+      let page = 0;
+      const pageSize = 100; // max allowed by backend
+      let hasMore = true;
+
+      // Fetch all students page by page
+      while (hasMore) {
+        const params = new URLSearchParams({
+          limit: pageSize,
+          skip: page * pageSize,
+        });
+        if (searchTerm) params.append('search', searchTerm);
+        if (selectedDepartment) params.append('department', selectedDepartment);
+        if (selectedLevel) params.append('level', selectedLevel);
+        if (selectedStatus) params.append('status', selectedStatus);
+
+        const response = await api.get(`/api/admin/students?${params.toString()}`);
+        const data = response.data;
+        const pageStudents = data.data || [];
+        allStudents = allStudents.concat(pageStudents);
+        
+        if (pageStudents.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      if (allStudents.length === 0) {
+        alert('No students to export.');
+        setExportLoading(false);
+        return;
+      }
+
+      const headers = [
+        'First Name', 'Last Name', 'Email', 'Phone', 'Department',
+        'Level', 'Matric Number', 'Skills', 'Interests', 'Career Aspiration',
+        'Status', 'Applications', 'Registered At'
+      ];
+
+      const rows = allStudents.map((s) => [
+        s.firstName || '',
+        s.lastName || '',
+        s.email || '',
+        s.phone || '',
+        s.department || '',
+        s.level || '',
+        s.matricNumber || '',
+        (s.skills || []).join('; '),
+        (s.interests || []).join('; '),
+        s.careerAspiration || '',
+        s.isActive ? 'Active' : 'Suspended',
+        s.applications || 0,
+        s.createdAt ? new Date(s.createdAt).toLocaleString() : ''
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `students_export_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to export data.');
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -97,6 +216,35 @@ const AdminStudents = () => {
     }
   };
 
+  const totalPages = Math.ceil(total / itemsPerPage);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+          <p className="mt-4 text-text-secondary">Loading students...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card variant="bordered" padding="lg" className="text-center py-12">
+        <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Students</h2>
+        <p className="text-text-secondary">{error}</p>
+        <button
+          onClick={fetchStudents}
+          className="mt-4 text-primary hover:underline"
+        >
+          Try Again
+        </button>
+      </Card>
+    );
+  }
+
   return (
     <div className="w-full overflow-x-hidden">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -104,7 +252,13 @@ const AdminStudents = () => {
           <h1 className="text-2xl font-bold text-primary-dark">Student Management</h1>
           <p className="text-text-secondary">Manage all registered students</p>
         </div>
-        <Button variant="primary" size="sm" icon={<Download className="w-4 h-4" />}>
+        <Button 
+          variant="primary" 
+          size="sm" 
+          icon={<Download className="w-4 h-4" />}
+          onClick={handleExport}
+          loading={exportLoading}
+        >
           Export Data
         </Button>
       </div>
@@ -168,58 +322,77 @@ const AdminStudents = () => {
               </tr>
             </thead>
             <tbody>
-              {currentStudents.map((student, index) => (
-                <motion.tr
-                  key={student.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="border-t border-border-light hover:bg-background-light/50 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary-light rounded-full flex items-center justify-center">
-                        <span className="text-sm font-bold text-primary-dark">{student.name.split(' ').map(n => n[0]).join('')}</span>
+              {students.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-8 text-text-muted">No students found</td>
+                </tr>
+              ) : (
+                students.map((student, index) => (
+                  <motion.tr
+                    key={student._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-t border-border-light hover:bg-background-light/50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-primary-light rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-primary-dark">
+                            {(student.firstName?.[0] || '') + (student.lastName?.[0] || '')}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-primary-dark">
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="text-xs text-text-muted">{student.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-primary-dark">{student.name}</p>
-                        <p className="text-xs text-text-muted">{student.email}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{student.department}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{student.level}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.isActive ? 'Active' : 'Suspended')}`}>
+                        {student.isActive ? 'Active' : 'Suspended'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{student.applications}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          icon={<Eye className="w-4 h-4" />}
+                          onClick={() => handleViewStudent(student)}
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          icon={<UserX className="w-4 h-4 text-status-error hover:text-status-error/80" />}
+                          onClick={() => handleSuspend(student._id, student.isActive)}
+                          disabled={actionLoading}
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          icon={<Trash2 className="w-4 h-4 text-status-error hover:text-status-error/80" />}
+                          onClick={() => handleDelete(student._id)}
+                          disabled={actionLoading}
+                        />
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{student.department}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{student.level}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
-                      {student.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{student.applications}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        icon={<Eye className="w-4 h-4" />}
-                        onClick={() => {
-                          setSelectedStudent(student);
-                          setShowProfileModal(true);
-                        }}
-                      />
-                      <Button variant="ghost" size="sm" icon={<UserX className="w-4 h-4 text-status-error hover:text-status-error/80" />} />
-                      <Button variant="ghost" size="sm" icon={<Trash2 className="w-4 h-4 text-status-error hover:text-status-error/80" />} />
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         
-        {/* Pagination - Simplified for mobile */}
+        {/* Pagination */}
         <div className="px-4 py-3 border-t border-border-light flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-sm text-text-muted text-center sm:text-left">
-            Showing {filteredStudents.length} of {students.length} students
+            Showing {students.length} of {total} students
           </p>
           <div className="flex items-center gap-2">
             <Button 
@@ -232,7 +405,7 @@ const AdminStudents = () => {
               Previous
             </Button>
             <span className="text-sm text-text-secondary px-2">
-              Page {currentPage} of {totalPages}
+              Page {currentPage} of {totalPages || 1}
             </span>
             <Button 
               variant="outline" 
@@ -264,21 +437,23 @@ const AdminStudents = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Header */}
               <div className="flex items-center gap-4 p-4 bg-background-light rounded-xl">
                 <div className="w-16 h-16 bg-primary-light rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-primary-dark">{selectedStudent.name.split(' ').map(n => n[0]).join('')}</span>
+                  <span className="text-2xl font-bold text-primary-dark">
+                    {(selectedStudent.firstName?.[0] || '') + (selectedStudent.lastName?.[0] || '')}
+                  </span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-primary-dark">{selectedStudent.name}</h3>
+                  <h3 className="text-lg font-semibold text-primary-dark">
+                    {selectedStudent.firstName} {selectedStudent.lastName}
+                  </h3>
                   <p className="text-text-secondary">{selectedStudent.department} • {selectedStudent.level}</p>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedStudent.status)}`}>
-                    {selectedStudent.status}
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedStudent.isActive ? 'Active' : 'Suspended')}`}>
+                    {selectedStudent.isActive ? 'Active' : 'Suspended'}
                   </span>
                 </div>
               </div>
 
-              {/* Details Grid */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-text-muted">Matric Number</p>
@@ -298,30 +473,49 @@ const AdminStudents = () => {
                 </div>
               </div>
 
-              {/* Skills */}
-              <div>
-                <p className="text-sm font-medium text-primary-dark mb-2 flex items-center"><Tag className="w-4 h-4 mr-1 text-primary" /> Skills</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedStudent.skills.map((skill, i) => (
-                    <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full">{skill}</span>
-                  ))}
+              {selectedStudent.skills && selectedStudent.skills.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-primary-dark mb-2 flex items-center"><Tag className="w-4 h-4 mr-1 text-primary" /> Skills</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.skills.map((skill, i) => (
+                      <span key={i} className="px-3 py-1 bg-primary-light/20 text-primary-dark text-sm rounded-full">{skill}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Interests */}
-              <div>
-                <p className="text-sm font-medium text-primary-dark mb-2 flex items-center"><Award className="w-4 h-4 mr-1 text-primary" /> Interests</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedStudent.interests.map((interest, i) => (
-                    <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full">{interest}</span>
-                  ))}
+              {selectedStudent.interests && selectedStudent.interests.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-primary-dark mb-2 flex items-center"><Award className="w-4 h-4 mr-1 text-primary" /> Interests</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.interests.map((interest, i) => (
+                      <span key={i} className="px-3 py-1 bg-accent-yellow/10 text-accent-orange text-sm rounded-full">{interest}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Actions */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-border-light">
-                <Button variant="outline" size="sm" className="border-status-error text-status-error hover:bg-status-error/10" icon={<UserX className="w-4 h-4" />}>Suspend Account</Button>
-                <Button variant="outline" size="sm" className="border-status-error text-status-error hover:bg-status-error/10" icon={<Trash2 className="w-4 h-4" />}>Delete Account</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-status-error text-status-error hover:bg-status-error/10" 
+                  icon={<UserX className="w-4 h-4" />}
+                  onClick={() => handleSuspend(selectedStudent._id, selectedStudent.isActive)}
+                  disabled={actionLoading}
+                >
+                  {selectedStudent.isActive ? 'Suspend Account' : 'Activate Account'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-status-error text-status-error hover:bg-status-error/10" 
+                  icon={<Trash2 className="w-4 h-4" />}
+                  onClick={() => handleDelete(selectedStudent._id)}
+                  disabled={actionLoading}
+                >
+                  Delete Account
+                </Button>
               </div>
             </div>
           </motion.div>

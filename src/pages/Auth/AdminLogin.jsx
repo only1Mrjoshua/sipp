@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, Mail, Lock, Shield, AlertCircle } from 'lucide-react';
@@ -18,6 +18,14 @@ const AdminLogin = () => {
     rememberMe: false,
   });
 
+  // If already logged in as admin, redirect immediately
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    if (user && user.role === 'admin') {
+      window.location.replace('/admin');
+    }
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
@@ -33,11 +41,37 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      await authService.adminLogin(formData.email, formData.password);
-      navigate('/admin');
+      // Attempt login
+      const response = await authService.adminLogin(formData.email, formData.password);
+      
+      // Verify user data after login
+      const user = authService.getCurrentUser();
+      if (user && user.role === 'admin') {
+        // Try React Router navigate first
+        navigate('/admin', { replace: true });
+        
+        // Fallback: force full page redirect after a tiny delay
+        setTimeout(() => {
+          if (window.location.pathname !== '/admin') {
+            window.location.replace('/admin');
+          }
+        }, 50);
+        
+        // Another fallback: if after 200ms still not at /admin, use href
+        setTimeout(() => {
+          if (window.location.pathname !== '/admin') {
+            window.location.href = '/admin';
+          }
+        }, 200);
+        
+        // We must return to avoid setting loading false (page will reload)
+        return;
+      } else {
+        setError('Admin login failed. You are not authorized as an admin.');
+        setLoading(false);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Admin login failed. Please check your credentials.');
-    } finally {
       setLoading(false);
     }
   };

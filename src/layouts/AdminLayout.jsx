@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { 
   LayoutDashboard,
   Users,
@@ -11,14 +12,19 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import Container from '../components/common/Container';
+import Button from '../components/common/Button';  // ✅ Added this import
 import logo from '../assets/images/logo.png';
+import { authService } from '../services/authService';
 
 const AdminLayout = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const location = useLocation();
   const sidebarRef = useRef(null);
 
@@ -73,6 +79,11 @@ const AdminLayout = () => {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/admin-login');
+  };
+
   return (
     <div className="min-h-screen bg-background-light flex">
       {isMobileMenuOpen && (
@@ -96,7 +107,7 @@ const AdminLayout = () => {
         <div className="flex h-screen flex-col">
           {/* Logo */}
           <div className="flex h-20 items-center justify-between border-b border-border-light px-6 flex-shrink-0">
-            <Link to="/admin" onClick={closeMobileMenu} className="flex items-center">
+            <Link to="/" onClick={closeMobileMenu} className="flex items-center">
               <img src={logo} alt="SIPP Logo" className="h-12 w-auto" />
             </Link>
             <button
@@ -115,7 +126,7 @@ const AdminLayout = () => {
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
               const active = isActive(item.path);
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const isCategory = item.isCategory;
@@ -123,7 +134,7 @@ const AdminLayout = () => {
               if (isCategory) {
                 // Category header - not clickable
                 return (
-                  <div key={item.path} className="mb-2">
+                  <div key={item.path || index} className="mb-2">
                     <div className="flex items-center px-4 py-2">
                       <item.icon className="w-5 h-5 flex-shrink-0 text-text-muted" />
                       {isSidebarOpen && (
@@ -157,7 +168,7 @@ const AdminLayout = () => {
               // Regular nav item - clickable
               return (
                 <Link
-                  key={item.path}
+                  key={item.path || index}
                   to={item.path}
                   onClick={closeMobileMenu}
                   className={`
@@ -177,7 +188,7 @@ const AdminLayout = () => {
           {/* Logout */}
           <div className="border-t border-border-light p-4 flex-shrink-0">
             <button
-              onClick={closeMobileMenu}
+              onClick={() => setShowLogoutModal(true)}
               className="flex w-full items-center rounded-xl px-4 py-3 text-status-error hover:bg-status-error/10 transition-colors"
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -206,6 +217,49 @@ const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-strong"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-status-warning/10 rounded-xl flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-status-warning" />
+              </div>
+              <h3 className="text-lg font-bold text-primary-dark">Confirm Logout</h3>
+            </div>
+
+            <p className="text-text-secondary text-sm mb-6">
+              Are you sure you want to logout of your admin account? You will need to login again to access the dashboard.
+            </p>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                fullWidth
+                onClick={() => setShowLogoutModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                fullWidth
+                onClick={handleLogout}
+                className="bg-status-error hover:bg-status-error/80"
+              >
+                Yes, Logout
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

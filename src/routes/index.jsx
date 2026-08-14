@@ -38,6 +38,10 @@ import AdminCompanies from '../pages/Admin/Companies';
 import AdminInternships from '../pages/Admin/Internships';
 import AdminApplications from '../pages/Admin/Applications';
 
+// NEW Admin Company Detail Pages
+import AdminCompanyInternships from '../pages/Admin/CompanyInternships';
+import AdminCompanyAcceptedStudents from '../pages/Admin/CompanyAcceptedStudents';
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -89,6 +93,9 @@ export const router = createBrowserRouter([
       { path: 'companies', element: <AdminCompanies /> },
       { path: 'internships', element: <AdminInternships /> },
       { path: 'applications', element: <AdminApplications /> },
+      // NEW: Company detail routes
+      { path: 'company/:companyId/internships', element: <AdminCompanyInternships /> },
+      { path: 'company/:companyId/accepted-students', element: <AdminCompanyAcceptedStudents /> },
     ],
   },
 ]);

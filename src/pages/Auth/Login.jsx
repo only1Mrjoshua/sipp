@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, Mail, Lock, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Container from '../../components/common/Container';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -44,7 +45,19 @@ const Login = () => {
         navigate('/');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      const detail = err.response?.data?.detail || '';
+      if (detail.toLowerCase().includes('suspended')) {
+        // Show toast and redirect to suspended page
+        toast.error('Account suspended. Please contact support.', {
+          duration: 4000,
+          position: 'top-center',
+        });
+        setTimeout(() => {
+          window.location.href = '/suspended';
+        }, 1500);
+      } else {
+        setError(detail || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }

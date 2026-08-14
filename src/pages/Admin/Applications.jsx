@@ -1,75 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
   CheckCircle,
   XCircle,
   Clock,
-  Download
+  Download,
+  Loader,
+  AlertCircle
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 const AdminApplications = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [applications, setApplications] = useState([]);
+  const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
   const itemsPerPage = 5;
-
-  const applications = [
-    {
-      id: 1,
-      student: 'John Doe',
-      company: 'TechCorp Inc.',
-      internship: 'Frontend Developer Intern',
-      matchScore: 95,
-      status: 'In Review',
-      date: '2 days ago',
-    },
-    {
-      id: 2,
-      student: 'Jane Smith',
-      company: 'DataVision Ltd.',
-      internship: 'Data Analyst Intern',
-      matchScore: 88,
-      status: 'In Review',
-      date: '3 days ago',
-    },
-    {
-      id: 3,
-      student: 'Michael Johnson',
-      company: 'Creative Studios',
-      internship: 'UI/UX Design Intern',
-      matchScore: 92,
-      status: 'Accepted',
-      date: '1 week ago',
-    },
-    {
-      id: 4,
-      student: 'Sarah Williams',
-      company: 'TechCorp Inc.',
-      internship: 'Backend Developer Intern',
-      matchScore: 78,
-      status: 'Rejected',
-      date: '2 weeks ago',
-    },
-  ];
 
   const statuses = ['All', 'In Review', 'Accepted', 'Rejected'];
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.student.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          app.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          app.internship.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = !selectedStatus || selectedStatus === 'All' || app.status === selectedStatus;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    fetchApplications();
+  }, [searchTerm, selectedStatus, currentPage]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredApplications.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentApplications = filteredApplications.slice(startIndex, endIndex);
+  const fetchApplications = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        setError('Not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const skip = (currentPage - 1) * itemsPerPage;
+      const params = new URLSearchParams({
+        limit: itemsPerPage,
+        skip: skip,
+      });
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedStatus) params.append('status', selectedStatus);
+
+      const response = await api.get(`/api/admin/applications?${params.toString()}`);
+      const data = response.data;
+      setApplications(data.data || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+      setError(err.response?.data?.detail || 'Failed to load applications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Export to CSV ────────────────────────────────────────────────
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        alert('Not authenticated');
+        setExportLoading(false);
+        return;
+      }
+
+      // Build base params (search and status)
+      const baseParams = new URLSearchParams();
+      if (searchTerm) baseParams.append('search', searchTerm);
+      if (selectedStatus) baseParams.append('status', selectedStatus);
+
+      let allApps = [];
+      let page = 0;
+      const limit = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const skip = page * limit;
+        const p = new URLSearchParams(baseParams);
+        p.append('limit', limit);
+        p.append('skip', skip);
+
+        const response = await api.get(`/api/admin/applications?${p.toString()}`);
+        const data = response.data;
+        allApps = allApps.concat(data.data || []);
+        hasMore = data.data && data.data.length === limit;
+        page++;
+        if (page > 50) break; // safety
+      }
+
+      if (allApps.length === 0) {
+        alert('No applications to export.');
+        setExportLoading(false);
+        return;
+      }
+
+      // Build CSV headers and rows
+      const headers = [
+        'Student Name', 'Student Email', 'Company', 'Internship', 
+        'Match Score (%)', 'Status', 'Applied Date'
+      ];
+
+      const rows = allApps.map((app) => [
+        app.studentName || '',
+        app.studentEmail || '',
+        app.companyName || '',
+        app.internshipTitle || '',
+        app.matchScore || 0,
+        app.status || 'Pending',
+        app.createdAt ? new Date(app.createdAt).toLocaleString() : ''
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `applications_export_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // ─── Rest of component ────────────────────────────────────────────
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -89,6 +162,30 @@ const AdminApplications = () => {
     }
   };
 
+  const totalPages = Math.ceil(total / itemsPerPage);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+          <p className="mt-4 text-text-secondary">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card variant="bordered" padding="lg" className="text-center py-12">
+        <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Applications</h2>
+        <p className="text-text-secondary">{error}</p>
+        <button onClick={fetchApplications} className="mt-4 text-primary hover:underline">Try Again</button>
+      </Card>
+    );
+  }
+
   return (
     <div className="w-full overflow-x-hidden">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -96,7 +193,13 @@ const AdminApplications = () => {
           <h1 className="text-2xl font-bold text-primary-dark">Application Management</h1>
           <p className="text-text-secondary">Oversee all internship applications</p>
         </div>
-        <Button variant="primary" size="sm" icon={<Download className="w-4 h-4" />}>
+        <Button 
+          variant="primary" 
+          size="sm" 
+          icon={<Download className="w-4 h-4" />}
+          onClick={handleExport}
+          loading={exportLoading}
+        >
           Export Data
         </Button>
       </div>
@@ -144,41 +247,49 @@ const AdminApplications = () => {
               </tr>
             </thead>
             <tbody>
-              {currentApplications.map((app, index) => (
-                <motion.tr
-                  key={app.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="border-t border-border-light hover:bg-background-light/50 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary-light rounded-full flex items-center justify-center">
-                        <span className="text-sm font-bold text-primary-dark">{app.student.split(' ').map(n => n[0]).join('')}</span>
+              {applications.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-8 text-text-muted">No applications found</td>
+                </tr>
+              ) : (
+                applications.map((app, index) => (
+                  <motion.tr
+                    key={app._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-t border-border-light hover:bg-background-light/50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-primary-light rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-primary-dark">
+                            {app.studentName?.split(' ').map(n => n[0]).join('') || 'S'}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium text-primary-dark">{app.studentName}</span>
                       </div>
-                      <span className="text-sm font-medium text-primary-dark">{app.student}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{app.company}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{app.internship}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-primary">{app.matchScore}%</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
-                      {getStatusIcon(app.status)}
-                      {app.status}
-                    </span>
-                  </td>
-                </motion.tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{app.companyName}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{app.internshipTitle}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-primary">{app.matchScore || 0}%</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(app.status)}`}>
+                        {getStatusIcon(app.status)}
+                        {app.status || 'Pending'}
+                      </span>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         
-        {/* Pagination - Simplified for mobile */}
+        {/* Pagination */}
         <div className="px-4 py-3 border-t border-border-light flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-sm text-text-muted text-center sm:text-left">
-            Showing {filteredApplications.length} of {applications.length} applications
+            Showing {applications.length} of {total} applications
           </p>
           <div className="flex items-center gap-2">
             <Button 
@@ -191,14 +302,14 @@ const AdminApplications = () => {
               Previous
             </Button>
             <span className="text-sm text-text-secondary px-2">
-              Page {currentPage} of {totalPages}
+              Page {currentPage} of {totalPages || 1}
             </span>
             <Button 
               variant="outline" 
               size="sm" 
               className="px-4"
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
             >
               Next
             </Button>
