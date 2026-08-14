@@ -114,7 +114,7 @@ const AdminDashboard = () => {
     <div className="w-full overflow-x-hidden">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-dark">Dashboard</h1>
-        <p className="text-text-secondary">Overview of the SIPP platform.</p>
+        <p className="text-text-secondary">Overview of the SIPP platform</p>
       </div>
 
       {/* Stats Grid */}
