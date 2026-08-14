@@ -81,7 +81,7 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     authService.logout();
-    navigate('/admin-login');
+    navigate('/login');
   };
 
   return (

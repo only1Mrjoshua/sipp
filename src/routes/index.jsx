@@ -9,7 +9,6 @@ import AdminLayout from '../layouts/AdminLayout';
 // Student Pages
 import Home from '../pages/Home/Home';
 import Login from '../pages/Auth/Login';
-import AdminLogin from '../pages/Auth/AdminLogin';
 import Register from '../pages/Auth/Register';
 import StudentSignup from '../pages/Auth/StudentSignup';
 import CompanySignup from '../pages/Auth/CompanySignup';
@@ -49,7 +48,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'login', element: <Login /> },
-      { path: 'admin-login', element: <AdminLogin /> },
       { path: 'register', element: <Register /> },
       { path: 'signup/student', element: <StudentSignup /> },
       { path: 'signup/company', element: <CompanySignup /> },
