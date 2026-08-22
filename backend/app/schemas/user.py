@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     companyName: Optional[str] = None
     industry: Optional[str] = None
     state: Optional[str] = None
+    lga: Optional[str] = None    # NEW: Added LGA to response
     city: Optional[str] = None
     address: Optional[str] = None
     isVerified: bool
@@ -37,6 +38,8 @@ class StudentProfileUpdate(BaseModel):
     department: Optional[str] = None
     matricNumber: Optional[str] = None
     level: Optional[str] = None
+    state: Optional[str] = None    # NEW: Allow students to update state
+    lga: Optional[str] = None      # NEW: Allow students to update LGA
     skills: Optional[List[str]] = None
     interests: Optional[List[str]] = None
     careerAspiration: Optional[str] = None

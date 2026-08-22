@@ -14,9 +14,9 @@ security = HTTPBearer()
 # Department to Industry Mapping - COMPLETE LIST
 DEPARTMENT_INDUSTRY_MAPPING = {
     # ============ TECHNOLOGY & IT ============
-    "Computer Science": ["Information Technology / Software"],
-    "Software Engineering": ["Information Technology / Software"],
-    "Information Technology": ["Information Technology / Software"],
+    "Computer Science": ["Information Technology / Software", "Finance / Banking", "Consulting"],
+    "Software Engineering": ["Information Technology / Software", "Finance / Banking", "Consulting"],
+    "Information Technology": ["Information Technology / Software", "Finance / Banking", "Consulting"],
     "Statistics": ["Information Technology / Software", "Finance / Banking", "Consulting"],
     "Mathematics": ["Information Technology / Software", "Finance / Banking", "Consulting"],
     
@@ -54,6 +54,9 @@ DEPARTMENT_INDUSTRY_MAPPING = {
     # ============ LEGAL ============
     "Law": ["Legal"],
     
+    # ============ INTERNATIONAL RELATIONS ============
+    "International Relations": ["Legal", "Consulting", "Marketing / Advertising", "Education / Academia"],
+    
     # ============ EDUCATION ============
     "Education": ["Education / Academia"],
     
@@ -77,6 +80,22 @@ def calculate_match(student, internship, company):
     Returns:
         int: Match score between 0 and 100
     """
+    
+    # ===== LOCATION FILTER: State AND LGA must match exactly =====
+    student_state = student.get("state", "").strip()
+    student_lga = student.get("lga", "").strip()
+    company_state = company.get("state", "").strip()
+    company_lga = company.get("lga", "").strip()
+    
+    # If either student or company is missing location, they don't match
+    if not student_state or not student_lga or not company_state or not company_lga:
+        return 0
+    
+    if student_state.lower() != company_state.lower() or \
+       student_lga.lower() != company_lga.lower():
+        return 0
+    # ===== END LOCATION FILTER =====
+
     student_department = student.get("department", "")
     student_skills = student.get("skills", [])
     student_interests = student.get("interests", [])
@@ -277,15 +296,12 @@ async def get_matched_internships(
     skip: int = 0,
     limit: int = 50
 ):
-    """Get internships matched to a student – optimized with aggregation and pagination"""
-    
     if user.get("role") != "student":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can view matched internships"
         )
 
-    # 1. Full student profile
     users_collection = await get_users_collection()
     full_user = await users_collection.find_one({"_id": ObjectId(user["_id"])})
     if not full_user:
@@ -294,18 +310,15 @@ async def get_matched_internships(
     internships_collection = await get_internships_collection()
     applications_collection = await get_applications_collection()
 
-    # 2. Get active internships with pagination (sorted newest first)
     internships_cursor = internships_collection.find({"status": "Active"}).sort("createdAt", -1).skip(skip).limit(limit)
     internships = await internships_cursor.to_list(length=limit)
     if not internships:
         return []
 
-    # 3. Collect all company IDs and fetch companies in ONE query
     company_ids = list({ObjectId(internship["companyId"]) for internship in internships})
     companies = await users_collection.find({"_id": {"$in": company_ids}}).to_list(None)
     company_map = {str(comp["_id"]): comp for comp in companies}
 
-    # 4. Count applications per internship in ONE aggregation
     internship_ids = [internship["_id"] for internship in internships]
 
     # total applicants
@@ -324,7 +337,6 @@ async def get_matched_internships(
     matched_counts = await applications_collection.aggregate(pipeline_matched).to_list(None)
     matched_map = {doc["_id"]: doc["matched"] for doc in matched_counts}
 
-    # 5. Build response, computing match scores in Python
     matched_internships = []
     for internship in internships:
         company = company_map.get(internship["companyId"])
@@ -360,7 +372,6 @@ async def get_matched_internships(
             "updatedAt": internship.get("updatedAt", datetime.utcnow())
         })
 
-    # Sort by match score descending
     matched_internships.sort(key=lambda x: x["match"], reverse=True)
     return matched_internships
 

@@ -16,6 +16,7 @@ const StudentInternships = () => {
   const [hasInterests, setHasInterests] = useState(false);
   const [internships, setInternships] = useState([]);
   const [user, setUser] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
 
   useEffect(() => {
     const userData = authService.getCurrentUser();
@@ -30,19 +31,26 @@ const StudentInternships = () => {
   const checkProfileCompletion = async (userData) => {
     setLoading(true);
     try {
+      // Get profile completion status
       const response = await api.get(`/api/students/profile/completion/${userData.id}`);
       setProfileComplete(response.data.is_complete);
       setMissingFields(response.data.missing_fields);
-      
+
+      // Get full profile data (includes location)
       const profileResponse = await api.get(`/api/students/profile/${userData.id}`);
       const profile = profileResponse.data;
-      
+
+      // Set location from profile (not localStorage)
+      setUserLocation({
+        state: profile.state || '',
+        lga: profile.lga || ''
+      });
+
       const hasSkills = profile.skills && profile.skills.length > 0;
       const hasInterests = profile.interests && profile.interests.length > 0;
-      
       setHasSkills(hasSkills);
       setHasInterests(hasInterests);
-      
+
       if (response.data.is_complete && hasSkills && hasInterests) {
         await fetchInternships();
       }
@@ -55,9 +63,8 @@ const StudentInternships = () => {
 
   const fetchInternships = async () => {
     try {
-      // You can pass skip & limit as query params
       const response = await api.get('/api/internships/student/matched', {
-        params: { skip: 0, limit: 50 }
+        params: { skip: 0, limit: 350 }
       });
       setInternships(response.data || []);
     } catch (error) {
@@ -68,11 +75,17 @@ const StudentInternships = () => {
 
   const handleApply = (internship) => {
     const internshipId = internship._id || internship.id;
-    console.log('Navigating to apply with ID:', internshipId);
     if (internshipId) {
       navigate(`/student/apply/${internshipId}`);
     } else {
       console.error('No internship ID found:', internship);
+    }
+  };
+
+  const forceRefresh = () => {
+    const userData = authService.getCurrentUser();
+    if (userData) {
+      checkProfileCompletion(userData);
     }
   };
 
@@ -87,7 +100,6 @@ const StudentInternships = () => {
     );
   }
 
-  // Show profile completion message if profile is not complete
   if (!profileComplete) {
     return (
       <div className="max-w-2xl mx-auto py-12">
@@ -99,11 +111,11 @@ const StudentInternships = () => {
             Complete Your Profile
           </h2>
           <p className="text-text-secondary mb-4">
-            To get matched with internship opportunities based on your skills and interests, 
+            To get matched with internship opportunities based on your skills and interests,
             please complete your profile information.
           </p>
           <p className="text-sm text-text-muted mb-4">
-            The system uses your <strong>skills</strong> and <strong>interests</strong> to find 
+            The system uses your <strong>skills</strong> and <strong>interests</strong> to find
             the best internships for you.
           </p>
           {missingFields.length > 0 && (
@@ -119,9 +131,9 @@ const StudentInternships = () => {
               </ul>
             </div>
           )}
-          <Button 
-            variant="primary" 
-            size="lg" 
+          <Button
+            variant="primary"
+            size="lg"
             icon={<User className="w-5 h-5" />}
             onClick={() => navigate('/student/profile')}
           >
@@ -132,7 +144,6 @@ const StudentInternships = () => {
     );
   }
 
-  // Show message if student needs to add skills/interests
   if (!hasSkills || !hasInterests) {
     return (
       <div className="max-w-2xl mx-auto py-12">
@@ -163,9 +174,9 @@ const StudentInternships = () => {
               )}
             </ul>
           </div>
-          <Button 
-            variant="primary" 
-            size="lg" 
+          <Button
+            variant="primary"
+            size="lg"
             icon={<User className="w-5 h-5" />}
             onClick={() => navigate('/student/profile')}
           >
@@ -176,7 +187,6 @@ const StudentInternships = () => {
     );
   }
 
-  // Show empty state if no internships available
   if (internships.length === 0) {
     return (
       <div className="max-w-2xl mx-auto py-12">
@@ -188,20 +198,15 @@ const StudentInternships = () => {
             No Internships Available
           </h2>
           <p className="text-text-secondary mb-4">
-            There are currently no internships matching your skills and interests. 
-            Companies haven't posted any internships that match your profile yet.
+            There are currently no internships matching your skills and interests in your location.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.location.reload()}
-            >
+            <Button variant="outline" size="sm" onClick={forceRefresh}>
               Refresh
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               icon={<User className="w-4 h-4" />}
               onClick={() => navigate('/student/profile')}
             >
@@ -213,10 +218,8 @@ const StudentInternships = () => {
     );
   }
 
-  // Show internships if available
   return (
     <div>
-      {/* Header with count */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-primary-dark">Internships</h1>
@@ -227,11 +230,9 @@ const StudentInternships = () => {
         </div>
       </div>
 
-      {/* Internship Cards */}
       <div className="space-y-4">
         {internships.map((internship, index) => {
           const internshipId = internship._id || internship.id;
-          
           return (
             <motion.div
               key={internshipId || index}
@@ -254,7 +255,7 @@ const StudentInternships = () => {
                         {internship.match || 0}% Match
                       </span>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-4 mt-3 text-sm text-text-secondary">
                       <span className="flex items-center">
                         <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
@@ -278,9 +279,9 @@ const StudentInternships = () => {
                     </div>
                   </div>
 
-                  <Button 
-                    variant="primary" 
-                    size="sm" 
+                  <Button
+                    variant="primary"
+                    size="sm"
                     icon={<ArrowRight className="w-4 h-4" />}
                     onClick={() => handleApply(internship)}
                     className="flex-shrink-0"

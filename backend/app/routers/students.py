@@ -69,7 +69,8 @@ async def get_profile_completion(user_id: str):
     
     required_fields = [
         "firstName", "lastName", "email", "phone",
-        "university", "faculty", "department", "matricNumber", "level"
+        "university", "faculty", "department", "matricNumber", "level",
+        "state", "lga"  # NEW: Added state and lga as required for profile completion
     ]
     
     missing_fields = []
@@ -113,6 +114,12 @@ async def get_student_profile(user_id: str):
     if "careerAspiration" not in user:
         user["careerAspiration"] = ""
     
+    # Ensure location fields exist
+    if "state" not in user:
+        user["state"] = ""
+    if "lga" not in user:
+        user["lga"] = ""
+    
     return user
 
 @router.put("/profile/{user_id}")
@@ -134,7 +141,8 @@ async def update_student_profile(user_id: str, profile_data: dict):
     allowed_fields = [
         "firstName", "lastName", "phone",
         "university", "faculty", "department", "matricNumber", "level",
-        "skills", "interests", "careerAspiration"
+        "skills", "interests", "careerAspiration",
+        "state", "lga"  # NEW: Added state and lga to allow updates
     ]
     
     update_data = {}

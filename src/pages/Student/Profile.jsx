@@ -3,19 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import {
   Mail,
   Phone,
-  School, 
+  School,
   Briefcase,
   Settings,
   Edit2,
   Save,
   Camera,
   X,
-  Loader
+  Loader,
+  MapPin
 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import api from '../../services/api';
 import { authService } from '../../services/authService';
+import { getAllStates, getLGAsForState } from '../../data/nigerianStates';
 
 const StudentProfile = () => {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ const StudentProfile = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [availableLGAs, setAvailableLGAs] = useState([]);
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -33,6 +36,8 @@ const StudentProfile = () => {
     department: '',
     matricNumber: '',
     level: '',
+    state: '',          // NEW
+    lga: '',            // NEW
     skills: [],
     interests: [],
     careerAspiration: '',
@@ -41,6 +46,25 @@ const StudentProfile = () => {
 
   const [newSkill, setNewSkill] = useState('');
   const [newInterest, setNewInterest] = useState('');
+
+  const states = getAllStates();
+
+  // Update LGAs when state changes
+  useEffect(() => {
+    if (profileData.state) {
+      const lgas = getLGAsForState(profileData.state);
+      setAvailableLGAs(lgas);
+      // If current LGA is not in the list, reset it (only when editing)
+      if (isEditing && profileData.lga && !lgas.includes(profileData.lga)) {
+        setProfileData(prev => ({ ...prev, lga: '' }));
+      }
+    } else {
+      setAvailableLGAs([]);
+      if (isEditing && profileData.lga) {
+        setProfileData(prev => ({ ...prev, lga: '' }));
+      }
+    }
+  }, [profileData.state, isEditing]);
 
   const handleSettingsClick = () => {
     navigate('/student/settings');
@@ -152,12 +176,47 @@ const StudentProfile = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const userData = authService.getCurrentUser();
+      if (!userData) {
+        alert('User not found. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      // Build the update payload (exclude sensitive fields)
+      const payload = {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone,
+        university: profileData.university,
+        faculty: profileData.faculty,
+        department: profileData.department,
+        matricNumber: profileData.matricNumber,
+        level: profileData.level,
+        state: profileData.state,
+        lga: profileData.lga,
+        skills: profileData.skills,
+        interests: profileData.interests,
+        careerAspiration: profileData.careerAspiration,
+      };
+
+      const response = await api.put(`/api/students/profile/${userData.id}`, payload);
+      
+      if (response.status === 200) {
+        // Update local storage user data? Maybe not needed.
+        setIsEditing(false);
+        // Optionally refetch to get updated data from server
+        await fetchProfile();
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert(error.response?.data?.detail || 'Failed to update profile. Please try again.');
+    } finally {
       setLoading(false);
-      setIsEditing(false);
-    }, 1500);
+    }
   };
 
   const handleCancel = () => {
@@ -191,6 +250,8 @@ const StudentProfile = () => {
         department: data.department || '',
         matricNumber: data.matricNumber || '',
         level: data.level || '',
+        state: data.state || '',
+        lga: data.lga || '',
         skills: data.skills || [],
         interests: data.interests || [],
         careerAspiration: data.careerAspiration || '',
@@ -300,7 +361,7 @@ const StudentProfile = () => {
                 {profileData.firstName} {profileData.lastName}
               </h2>
             )}
-            <p className="text-text-secondary">Computer Science Student</p>
+            <p className="text-text-secondary">Student</p>
             <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-3 mt-3 text-sm w-full">
               {isEditing ? (
                 <>
@@ -440,13 +501,58 @@ const StudentProfile = () => {
           </div>
         </Card>
 
-        {/* Skills & Interests */}
+        {/* Location & Skills */}
         <Card variant="bordered" padding="lg">
           <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <Briefcase className="w-5 h-5 mr-2 text-primary shrink-0" />
-            Skills & Interests
+            <MapPin className="w-5 h-5 mr-2 text-primary shrink-0" />
+            Location & Skills
           </h3>
           <div className="space-y-4">
+            {/* Location Fields */}
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-text-muted">State</p>
+                {isEditing ? (
+                  <select
+                    name="state"
+                    value={profileData.state}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                  >
+                    <option value="">Select State</option>
+                    {states.map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-text-secondary font-medium">{profileData.state || 'Not set'}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-text-muted">Local Government Area</p>
+                {isEditing ? (
+                  <select
+                    name="lga"
+                    value={profileData.lga}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                    disabled={!profileData.state}
+                  >
+                    <option value="">Select LGA</option>
+                    {availableLGAs.map(lga => (
+                      <option key={lga} value={lga}>{lga}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-text-secondary font-medium">{profileData.lga || 'Not set'}</p>
+                )}
+                {isEditing && !profileData.state && (
+                  <p className="text-xs text-text-muted mt-1">Please select a state first</p>
+                )}
+              </div>
+            </div>
+
+            {/* Skills & Interests */}
             <div>
               <p className="text-sm text-text-muted">Skills</p>
               <div className="flex flex-wrap gap-2 mt-1">

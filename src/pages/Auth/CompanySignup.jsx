@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -7,6 +7,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { authService } from '../../services/authService';
 import { getAllIndustries } from '../../data/industryData';
+import { getAllStates, getLGAsForState } from '../../data/nigerianStates';
 
 const CompanySignup = () => {
   const navigate = useNavigate();
@@ -14,12 +15,14 @@ const CompanySignup = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [availableLGAs, setAvailableLGAs] = useState([]);
   const [formData, setFormData] = useState({
     companyName: '',
     email: '',
     phone: '',
     industry: '',
     state: '',
+    lga: '',           // NEW: Company's LGA
     city: '',
     address: '',
     password: '',
@@ -29,6 +32,24 @@ const CompanySignup = () => {
   });
 
   const industries = getAllIndustries();
+  const states = getAllStates();
+
+  // Update LGAs when state changes
+  useEffect(() => {
+    if (formData.state) {
+      const lgas = getLGAsForState(formData.state);
+      setAvailableLGAs(lgas);
+      // Reset LGA if current selection is not in the new list
+      if (formData.lga && !lgas.includes(formData.lga)) {
+        setFormData(prev => ({ ...prev, lga: '' }));
+      }
+    } else {
+      setAvailableLGAs([]);
+      if (formData.lga) {
+        setFormData(prev => ({ ...prev, lga: '' }));
+      }
+    }
+  }, [formData.state]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -51,6 +72,15 @@ const CompanySignup = () => {
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!formData.state) {
+      setError('Please select a State');
+      return;
+    }
+    if (!formData.lga) {
+      setError('Please select a Local Government Area');
       return;
     }
 
@@ -199,36 +229,46 @@ const CompanySignup = () => {
                           required
                         >
                           <option value="">Select State</option>
-                          <option value="Lagos">Lagos</option>
-                          <option value="Abuja">Abuja</option>
-                          <option value="Rivers">Rivers</option>
-                          <option value="Kano">Kano</option>
-                          <option value="Oyo">Oyo</option>
-                          <option value="Kaduna">Kaduna</option>
-                          <option value="Enugu">Enugu</option>
-                          <option value="Edo">Edo</option>
-                          <option value="Ogun">Ogun</option>
-                          <option value="Kwara">Kwara</option>
-                          <option value="Delta">Delta</option>
-                          <option value="Anambra">Anambra</option>
-                          <option value="Plateau">Plateau</option>
-                          <option value="Borno">Borno</option>
+                          {states.map((state) => (
+                            <option key={state} value={state}>{state}</option>
+                          ))}
                         </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-primary-dark mb-1.5">
-                          City *
+                          Local Government Area *
                         </label>
-                        <input
-                          type="text"
-                          name="city"
-                          value={formData.city}
+                        <select
+                          name="lga"
+                          value={formData.lga}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                          placeholder="Lekki"
+                          className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
                           required
-                        />
+                          disabled={!formData.state}
+                        >
+                          <option value="">Select LGA</option>
+                          {availableLGAs.map((lga) => (
+                            <option key={lga} value={lga}>{lga}</option>
+                          ))}
+                        </select>
+                        {!formData.state && (
+                          <p className="text-xs text-text-muted mt-1">Please select a state first</p>
+                        )}
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-primary-dark mb-1.5">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="Lekki"
+                        required
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-primary-dark mb-1.5">
@@ -316,6 +356,22 @@ const CompanySignup = () => {
                     />
                     <span className="text-sm text-text-secondary">
                       Verify that this is a registered company
+                    </span>
+                  </label>
+                  <label className="flex items-start space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="acceptTerms"
+                      checked={formData.acceptTerms}
+                      onChange={handleChange}
+                      className="w-5 h-5 mt-0.5 text-primary border-border-light rounded focus:ring-primary"
+                      required
+                    />
+                    <span className="text-sm text-text-secondary">
+                      I accept the{' '}
+                      <Link to="/terms" className="text-primary hover:underline">
+                        Terms and Conditions
+                      </Link>
                     </span>
                   </label>
                 </div>

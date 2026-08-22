@@ -28,6 +28,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import api from '../../services/api';
 import { authService } from '../../services/authService';
+import { getAllStates, getLGAsForState } from '../../data/nigerianStates';
 
 const CompanyProfile = () => {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ const CompanyProfile = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [availableLGAs, setAvailableLGAs] = useState([]);
   const [newCategory, setNewCategory] = useState('');
   const [newSkill, setNewSkill] = useState('');
   const [newBenefit, setNewBenefit] = useState('');
@@ -49,6 +51,7 @@ const CompanyProfile = () => {
     website: '',
     industry: '',
     state: '',
+    lga: '',           // NEW: Company's LGA
     city: '',
     address: '',
     companyDescription: '',
@@ -61,6 +64,21 @@ const CompanyProfile = () => {
   });
 
   const companySizes = ['1–10', '11–50', '51–200', '200+'];
+  const states = getAllStates();
+
+  // Update LGAs when state changes (only when editing)
+  useEffect(() => {
+    if (isEditing && profileData.state) {
+      const lgas = getLGAsForState(profileData.state);
+      setAvailableLGAs(lgas);
+      // Reset LGA if current selection is not in the new list
+      if (profileData.lga && !lgas.includes(profileData.lga)) {
+        setProfileData(prev => ({ ...prev, lga: '' }));
+      }
+    } else if (!isEditing) {
+      setAvailableLGAs([]);
+    }
+  }, [profileData.state, isEditing]);
 
   // Fetch profile on mount
   useEffect(() => {
@@ -86,6 +104,7 @@ const CompanyProfile = () => {
         website: data.website || '',
         industry: data.industry || '',
         state: data.state || '',
+        lga: data.lga || '',
         city: data.city || '',
         address: data.address || '',
         companyDescription: data.companyDescription || '',
@@ -112,6 +131,10 @@ const CompanyProfile = () => {
     setIsEditing(true);
     setError('');
     setSaveSuccess(false);
+    // Populate LGAs for current state
+    if (profileData.state) {
+      setAvailableLGAs(getLGAsForState(profileData.state));
+    }
   };
 
   const handleChange = (e) => {
@@ -276,6 +299,7 @@ const CompanyProfile = () => {
         website: profileData.website || '',
         industry: profileData.industry,
         state: profileData.state,
+        lga: profileData.lga,           // NEW: Include LGA
         city: profileData.city,
         address: profileData.address,
         companyDescription: profileData.companyDescription,
@@ -467,7 +491,7 @@ const CompanyProfile = () => {
         </div>
       </Card>
 
-      {/* Company Details - Rest of the component remains the same */}
+      {/* Company Details */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Company Information */}
         <Card variant="bordered" padding="lg">
@@ -476,7 +500,6 @@ const CompanyProfile = () => {
             Company Information
           </h3>
           <div className="space-y-3">
-            {/* ... existing company info fields ... */}
             <div>
               <p className="text-sm text-text-muted">Industry</p>
               {isEditing ? (
@@ -538,70 +561,114 @@ const CompanyProfile = () => {
                 <p className="text-text-secondary font-medium break-words">{profileData.companySize || 'Not set'}</p>
               )}
             </div>
+          </div>
+        </Card>
+
+        {/* Location Information - UPDATED */}
+        <Card variant="bordered" padding="lg">
+          <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
+            <MapPin className="w-5 h-5 mr-2 text-primary shrink-0" />
+            Location Information
+          </h3>
+          <div className="space-y-3">
             <div>
-              <p className="text-sm text-text-muted">Location</p>
+              <p className="text-sm text-text-muted">State</p>
               {isEditing ? (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    name="state"
-                    value={profileData.state}
-                    onChange={handleChange}
-                    placeholder="State"
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="text"
-                    name="city"
-                    value={profileData.city}
-                    onChange={handleChange}
-                    placeholder="City"
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="text"
-                    name="address"
-                    value={profileData.address}
-                    onChange={handleChange}
-                    placeholder="Address"
-                    className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
+                <select
+                  name="state"
+                  value={profileData.state}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                >
+                  <option value="">Select State</option>
+                  {states.map((state) => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
               ) : (
-                <>
-                  <p className="text-text-secondary font-medium break-words">{profileData.city || 'Not set'}, {profileData.state || 'Not set'}</p>
-                  <p className="text-text-secondary text-sm break-words">{profileData.address || 'Not set'}</p>
-                </>
+                <p className="text-text-secondary font-medium break-words">{profileData.state || 'Not set'}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-text-muted">Local Government Area</p>
+              {isEditing ? (
+                <select
+                  name="lga"
+                  value={profileData.lga}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                  disabled={!profileData.state}
+                >
+                  <option value="">Select LGA</option>
+                  {availableLGAs.map((lga) => (
+                    <option key={lga} value={lga}>{lga}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-text-secondary font-medium break-words">{profileData.lga || 'Not set'}</p>
+              )}
+              {isEditing && !profileData.state && (
+                <p className="text-xs text-text-muted mt-1">Please select a state first</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-text-muted">City</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="city"
+                  value={profileData.city}
+                  onChange={handleChange}
+                  placeholder="e.g. Lekki"
+                  className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                />
+              ) : (
+                <p className="text-text-secondary font-medium break-words">{profileData.city || 'Not set'}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-text-muted">Address</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="address"
+                  value={profileData.address}
+                  onChange={handleChange}
+                  placeholder="123 Business District"
+                  className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                />
+              ) : (
+                <p className="text-text-secondary font-medium break-words">{profileData.address || 'Not set'}</p>
               )}
             </div>
           </div>
         </Card>
-
-        {/* Company Description */}
-        <Card variant="bordered" padding="lg">
-          <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-primary shrink-0" />
-            About Company
-          </h3>
-          <div>
-            <p className="text-sm text-text-muted mb-2">Company Description</p>
-            {isEditing ? (
-              <textarea
-                name="companyDescription"
-                value={profileData.companyDescription}
-                onChange={handleChange}
-                rows="6"
-                className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                placeholder="Describe your company..."
-              />
-            ) : (
-              <p className="text-text-secondary text-sm leading-relaxed break-words">
-                {profileData.companyDescription || 'No description provided'}
-              </p>
-            )}
-          </div>
-        </Card>
       </div>
+
+      {/* Company Description */}
+      <Card variant="bordered" padding="lg" className="mt-6">
+        <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
+          <FileText className="w-5 h-5 mr-2 text-primary shrink-0" />
+          About Company
+        </h3>
+        <div>
+          <p className="text-sm text-text-muted mb-2">Company Description</p>
+          {isEditing ? (
+            <textarea
+              name="companyDescription"
+              value={profileData.companyDescription}
+              onChange={handleChange}
+              rows="6"
+              className="w-full px-3 py-2 border border-border-light rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              placeholder="Describe your company..."
+            />
+          ) : (
+            <p className="text-text-secondary text-sm leading-relaxed break-words">
+              {profileData.companyDescription || 'No description provided'}
+            </p>
+          )}
+        </div>
+      </Card>
 
       {/* Internship Categories */}
       <Card variant="bordered" padding="lg" className="mt-6">

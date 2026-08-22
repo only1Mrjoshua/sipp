@@ -26,6 +26,8 @@ export const authService = {
         lastName: response.data.last_name || response.data.lastName || '',
         profilePicture: response.data.profile_picture || response.data.profilePicture || '',
         companyName: response.data.company_name || response.data.companyName || '',
+        state: response.data.state || '',   // NEW: Store state
+        lga: response.data.lga || '',       // NEW: Store LGA
       }));
     }
     return response.data;
@@ -43,6 +45,8 @@ export const authService = {
         firstName: response.data.first_name || response.data.firstName || '',
         lastName: response.data.last_name || response.data.lastName || '',
         profilePicture: response.data.profile_picture || response.data.profilePicture || '',
+        state: response.data.state || '',   // NEW: Store state
+        lga: response.data.lga || '',       // NEW: Store LGA
       }));
     }
     return response.data;

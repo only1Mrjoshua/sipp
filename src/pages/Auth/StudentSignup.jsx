@@ -13,6 +13,7 @@ import {
   getInterestsForDepartment, 
   getCareersForDepartment 
 } from '../../data/departmentSkills';
+import { NIGERIAN_STATES, getAllStates, getLGAsForState } from '../../data/nigerianStates';
 
 const StudentSignup = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const StudentSignup = () => {
   const [availableSkills, setAvailableSkills] = useState([]);
   const [availableInterests, setAvailableInterests] = useState([]);
   const [availableCareers, setAvailableCareers] = useState([]);
+  const [availableLGAs, setAvailableLGAs] = useState([]); // for dynamic LGA dropdown
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -35,6 +37,8 @@ const StudentSignup = () => {
     department: '',
     matricNumber: '',
     level: '',
+    state: '',          // NEW: student's state
+    lga: '',            // NEW: student's LGA
     password: '',
     confirmPassword: '',
     acceptTerms: false,
@@ -67,6 +71,24 @@ const StudentSignup = () => {
       setAvailableCareers([]);
     }
   }, [formData.department]);
+
+  // Update LGAs when state changes
+  useEffect(() => {
+    if (formData.state) {
+      const lgas = getLGAsForState(formData.state);
+      setAvailableLGAs(lgas);
+      // Reset LGA if current selection is not in the new list
+      if (formData.lga && !lgas.includes(formData.lga)) {
+        setFormData(prev => ({ ...prev, lga: '' }));
+      }
+    } else {
+      setAvailableLGAs([]);
+      // Reset LGA when state is cleared
+      if (formData.lga) {
+        setFormData(prev => ({ ...prev, lga: '' }));
+      }
+    }
+  }, [formData.state]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -115,7 +137,15 @@ const StudentSignup = () => {
       return;
     }
 
-    // Skills validation is not required - they can have none
+    // Validate location fields
+    if (!formData.state) {
+      setError('Please select your State');
+      return;
+    }
+    if (!formData.lga) {
+      setError('Please select your Local Government Area');
+      return;
+    }
 
     setLoading(true);
 
@@ -137,6 +167,8 @@ const StudentSignup = () => {
 
   // Get all departments for dropdown
   const departments = getAllDepartments();
+  // Get all states for dropdown
+  const states = getAllStates();
 
   return (
     <section className="min-h-screen py-20 bg-gradient-hero">
@@ -319,6 +351,53 @@ const StudentSignup = () => {
                         <option value="400L">400L</option>
                         <option value="500L">500L</option>
                       </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location Information - NEW SECTION */}
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-dark mb-4">
+                    Location Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-primary-dark mb-1.5">
+                        State *
+                      </label>
+                      <select
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
+                        required
+                      >
+                        <option value="">Select State</option>
+                        {states.map((state) => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-primary-dark mb-1.5">
+                        Local Government Area *
+                      </label>
+                      <select
+                        name="lga"
+                        value={formData.lga}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-border-light rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all appearance-none"
+                        required
+                        disabled={!formData.state}
+                      >
+                        <option value="">Select LGA</option>
+                        {availableLGAs.map((lga) => (
+                          <option key={lga} value={lga}>{lga}</option>
+                        ))}
+                      </select>
+                      {!formData.state && (
+                        <p className="text-xs text-text-muted mt-1">Please select a state first</p>
+                      )}
                     </div>
                   </div>
                 </div>

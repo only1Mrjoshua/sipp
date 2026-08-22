@@ -88,9 +88,9 @@ async def update_company_profile(user_id: str, profile_data: dict):
     if user.get("role") != "company":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User is not a company")
     
-    # Allowed fields to update - INCLUDING website
+    # Allowed fields to update - INCLUDING lga for location matching
     allowed_fields = [
-        "companyName", "phone", "website", "industry", "state", "city", "address",
+        "companyName", "phone", "website", "industry", "state", "lga", "city", "address",
         "companyDescription", "companySize", "internshipCategories",
         "skillsRequired", "skillsOffered", "benefits"
     ]

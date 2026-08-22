@@ -37,6 +37,8 @@ class StudentCreate(BaseModel):
     department: str
     matricNumber: str
     level: str
+    state: str  # NEW: Student's state
+    lga: str    # NEW: Student's LGA
     password: str
     skills: Optional[List[str]] = []
     interests: Optional[List[str]] = []
@@ -50,6 +52,8 @@ class StudentInDB(UserBase):
     department: str
     matricNumber: str
     level: str
+    state: str  # NEW: Student's state
+    lga: str    # NEW: Student's LGA
     hashedPassword: str
     skills: List[str] = []
     interests: List[str] = []
@@ -61,6 +65,7 @@ class CompanyCreate(BaseModel):
     phone: str
     industry: str
     state: str
+    lga: str    # NEW: Company's LGA (for exact matching)
     city: str
     address: str
     password: str
@@ -69,6 +74,7 @@ class CompanyInDB(UserBase):
     companyName: str
     industry: str
     state: str
+    lga: str    # NEW: Company's LGA
     city: str
     address: str
     hashedPassword: str
@@ -95,6 +101,7 @@ class UserOut(BaseModel):
     companyName: Optional[str] = None
     industry: Optional[str] = None
     state: Optional[str] = None
+    lga: Optional[str] = None  # NEW: Added LGA to output
     city: Optional[str] = None
     address: Optional[str] = None
     profilePicture: Optional[str] = None
