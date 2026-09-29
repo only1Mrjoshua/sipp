@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Building2, Clock, ArrowRight, User, AlertCircle, Briefcase, Loader } from 'lucide-react';
+import { MapPin, Building2, Clock, ArrowRight, User, AlertCircle, Briefcase, Loader, CheckCircle } from 'lucide-react'; // added CheckCircle
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import api from '../../services/api';
@@ -17,6 +17,7 @@ const StudentInternships = () => {
   const [internships, setInternships] = useState([]);
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [appliedIds, setAppliedIds] = useState(new Set()); // new state to track applied internship IDs
 
   useEffect(() => {
     const userData = authService.getCurrentUser();
@@ -53,6 +54,7 @@ const StudentInternships = () => {
 
       if (response.data.is_complete && hasSkills && hasInterests) {
         await fetchInternships();
+        await fetchApplications(); // fetch applications as well
       }
     } catch (error) {
       console.error('Error checking profile completion:', error);
@@ -70,6 +72,19 @@ const StudentInternships = () => {
     } catch (error) {
       console.error('Error fetching internships:', error);
       setInternships([]);
+    }
+  };
+
+  // New function to fetch student's applications
+  const fetchApplications = async () => {
+    try {
+      const response = await api.get('/api/applications/student');
+      const applications = response.data || [];
+      const ids = new Set(applications.map(app => app.internshipId));
+      setAppliedIds(ids);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      setAppliedIds(new Set());
     }
   };
 
@@ -233,6 +248,8 @@ const StudentInternships = () => {
       <div className="space-y-4">
         {internships.map((internship, index) => {
           const internshipId = internship._id || internship.id;
+          const isApplied = appliedIds.has(internshipId); // check if already applied
+
           return (
             <motion.div
               key={internshipId || index}
@@ -279,15 +296,27 @@ const StudentInternships = () => {
                     </div>
                   </div>
 
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    icon={<ArrowRight className="w-4 h-4" />}
-                    onClick={() => handleApply(internship)}
-                    className="flex-shrink-0"
-                  >
-                    Apply Now
-                  </Button>
+                  {isApplied ? (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      disabled
+                      icon={<CheckCircle className="w-4 h-4" />}
+                      className="bg-status-success text-white hover:bg-status-success/80 cursor-default"
+                    >
+                      Applied
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<ArrowRight className="w-4 h-4" />}
+                      onClick={() => handleApply(internship)}
+                      className="flex-shrink-0"
+                    >
+                      Apply Now
+                    </Button>
+                  )}
                 </div>
               </Card>
             </motion.div>
