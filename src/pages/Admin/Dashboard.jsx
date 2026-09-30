@@ -18,7 +18,19 @@ import Card from '../../components/common/Card';
 import api from '../../services/api';
 import { authService } from '../../services/authService';
 
-
+const FontPlus2Wrapper = ({ children }) => (
+  <div className="font-plus-2">
+    <style>{`
+      .font-plus-2 { font-size: calc(1rem + 2pt); }
+      .font-plus-2 .text-xs { font-size: calc(0.75rem + 2pt) !important; }
+      .font-plus-2 .text-sm { font-size: calc(0.875rem + 2pt) !important; }
+      .font-plus-2 .text-lg { font-size: calc(1.125rem + 2pt) !important; }
+      .font-plus-2 .text-xl { font-size: calc(1.25rem + 2pt) !important; }
+      .font-plus-2 .text-2xl { font-size: calc(1.5rem + 2pt) !important; }
+    `}</style>
+    {children}
+  </div>
+);
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -85,95 +97,101 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
-          <p className="mt-4 text-text-secondary">Loading dashboard...</p>
+      <FontPlus2Wrapper>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader className="w-12 h-12 text-primary animate-spin mx-auto" />
+            <p className="mt-4 text-text-secondary">Loading dashboard...</p>
+          </div>
         </div>
-      </div>
+      </FontPlus2Wrapper>
     );
   }
 
   if (error) {
     return (
-      <Card variant="bordered" padding="lg" className="text-center py-12">
-        <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Dashboard</h2>
-        <p className="text-text-secondary">{error}</p>
-        <button
-          onClick={fetchDashboardData}
-          className="mt-4 text-primary hover:underline"
-        >
-          Try Again
-        </button>
-      </Card>
+      <FontPlus2Wrapper>
+        <Card variant="bordered" padding="lg" className="text-center py-12">
+          <AlertCircle className="w-16 h-16 text-status-error mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-primary-dark mb-2">Error Loading Dashboard</h2>
+          <p className="text-text-secondary">{error}</p>
+          <button
+            onClick={fetchDashboardData}
+            className="mt-4 text-primary hover:underline"
+          >
+            Try Again
+          </button>
+        </Card>
+      </FontPlus2Wrapper>
     );
   }
 
   return (
-    <div className="w-full overflow-x-hidden">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-primary-dark">Dashboard</h1>
-        <p className="text-text-secondary">Overview of the SIPP platform</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card className="text-center">
-              <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center mx-auto mb-2`}>
-                <stat.icon className="w-5 h-5" />
-              </div>
-              <p className="text-2xl font-bold text-primary-dark">{stat.value.toLocaleString()}</p>
-              <p className="text-sm text-text-secondary">{stat.label}</p>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Recent Activity */}
-      <Card variant="bordered" padding="lg">
-        <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
-          <Activity className="w-5 h-5 mr-2 text-primary" />
-          Recent Activity
-        </h3>
-        <div className="space-y-3">
-          {activities.length === 0 ? (
-            <p className="text-text-secondary text-sm text-center py-4">No recent activity</p>
-          ) : (
-            activities.map((activity, index) => {
-              const IconComponent = getIcon(activity.icon);
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-3 bg-background-light rounded-xl hover:bg-primary-light/10 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <IconComponent className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-primary-dark">{activity.action}</p>
-                      <p className="text-xs text-text-muted">{activity.user}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-text-muted">{activity.time}</span>
-                </motion.div>
-              );
-            })
-          )}
+    <FontPlus2Wrapper>
+      <div className="w-full overflow-x-hidden">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-primary-dark">Dashboard</h1>
+          <p className="text-text-secondary">Overview of the SIPP platform</p>
         </div>
-      </Card>
-    </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <Card className="text-center">
+                <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center mx-auto mb-2`}>
+                  <stat.icon className="w-5 h-5" />
+                </div>
+                <p className="text-2xl font-bold text-primary-dark">{stat.value.toLocaleString()}</p>
+                <p className="text-sm text-text-secondary">{stat.label}</p>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Recent Activity */}
+        <Card variant="bordered" padding="lg">
+          <h3 className="text-lg font-semibold text-primary-dark mb-4 flex items-center">
+            <Activity className="w-5 h-5 mr-2 text-primary" />
+            Recent Activity
+          </h3>
+          <div className="space-y-3">
+            {activities.length === 0 ? (
+              <p className="text-text-secondary text-sm text-center py-4">No recent activity</p>
+            ) : (
+              activities.map((activity, index) => {
+                const IconComponent = getIcon(activity.icon);
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center justify-between p-3 bg-background-light rounded-xl hover:bg-primary-light/10 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <IconComponent className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-primary-dark">{activity.action}</p>
+                        <p className="text-xs text-text-muted">{activity.user}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-text-muted">{activity.time}</span>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </Card>
+      </div>
+    </FontPlus2Wrapper>
   );
 };
 
